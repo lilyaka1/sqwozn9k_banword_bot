@@ -1,0 +1,2 @@
+python-telegram-bot==20.0b0  # или актуальная версия
+aiogram==2.25.1
