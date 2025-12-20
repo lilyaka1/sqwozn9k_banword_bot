@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rover Smash — mini game</title>
+  <style>
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    #gameWrap{display:flex;flex-direction:column;height:100vh;background:#0b1220;color:#fff}
+    header{padding:12px 16px;background:#07101a;display:flex;align-items:center;justify-content:space-between}
+    header .left{display:flex;gap:12px;align-items:center}
+    header button{background:#1f6feb;border:none;padding:8px 12px;border-radius:8px;color:#fff}
+    #canvasWrap{flex:1;display:flex;align-items:center;justify-content:center}
+    canvas{background:#071127;border-radius:8px;max-width:100%;height:auto}
+    #hud{position:absolute;left:16px;top:72px;color:#fff}
+    .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,6,12,.6);}
+    .panel{background:#071827;padding:18px;border-radius:10px;min-width:320px;text-align:center}
+    .btn{background:#2dd4bf;border:none;padding:10px 14px;border-radius:8px;color:#052017;cursor:pointer}
+    .small{font-size:13px;opacity:.9}
+  </style>
+    <header>
+      <div class="left">
+        <strong>Rover Smash</strong>
+        <div class="small">Попади по роверам — уничтожь их по 3 удара</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <label class="small" style="opacity:0.9">Debug</label>
+        <input id="debugToggle" type="checkbox" />
+      </div>
+      <div>
+        <button id="startBtn">Start</button>
+        <button id="sendBtn" style="display:none;">Send score</button>
+      </div>
+    </header>
+
+    <div id="canvasWrap">
+      <canvas id="gameCanvas" width="500" height="900"></canvas>
+      <div id="hud" aria-hidden="true">
+        <div>Score: <span id="score">0</span></div>
+        <div>Arrived: <span id="arrived">0</span></div>
+        <div>Best: <span id="best">0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <template id="endTpl">
+    <div class="overlay">
+      <div class="panel">
+        <h2>Игра окончена</h2>
+        <p>Очки: <strong id="finalScore">0</strong></p>
+        <p class="small">Лучший: <span id="finalBest">0</span></p>
+        <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+          <button id="retry" class="btn">Ещё раз</button>
+          <button id="sendResult" class="btn">Отправить результат</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+  // Simple single-file rover smash prototype
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  let gamestate = 'idle'; // idle | running | ended
+  let score = 0;
+  let best = parseInt(localStorage.getItem('rs_best')||'0',10);
+  document.getElementById('best').textContent = best;
+  document.getElementById('score').textContent = score;
+  document.getElementById('time').textContent = timeLeft;
+
+  const rovers = [];
+  let lastSpawn = 0;
+  let spawnInterval = 5000; // РЕДКО спавнить роверов (было 2000)
+  let lastTime = performance.now();
+  const cars = [];
+  let lastCarSpawn = 0;
+  let arrivedCount = 0;
+
+  function spawnCar(){
+    // spawn a car that drives along a random edge between adjacent grid nodes
+    // pick a random grid edge (horizontal or vertical) and direction
+    const horizontal = Math.random() < 0.6; // prefer horizontal streets slightly
+    let a,b;
+    if(horizontal){
+      const r = Math.floor(Math.random() * GRID_ROWS);
+      const c = Math.floor(Math.random() * (GRID_COLS - 1));
+      a = grid[r][c]; b = grid[r][c+1];
+    } else {
+      const c = Math.floor(Math.random() * GRID_COLS);
+      const r = Math.floor(Math.random() * (GRID_ROWS - 1));
+      a = grid[r][c]; b = grid[r+1][c];
+    }
+    // choose direction along the edge
+    const dir = Math.random() > 0.5 ? 1 : -1;
+    const start = dir > 0 ? a : b;
+    const end = dir > 0 ? b : a;
+    // spawn slightly off-center so car sits on lane
+    const cx = start.x; const cy = start.y;
+    const ex = end.x; const ey = end.y;
+    const dist = Math.hypot(ex - cx, ey - cy);
+    const speed = rand(140, 260);
+    const vx = ((ex - cx) / dist) * speed * (dir);
+    const vy = ((ey - cy) / dist) * speed * (dir);
+    const car = {
+      x: cx - (ex - cx) * 0.05, // start a little before node
+      y: cy - (ey - cy) * 0.05,
+      vx: vx,
+      vy: vy,
+      targetX: ex,
+      targetY: ey,
+      w: rand(48,92),
+      h: rand(24,38),
+      color: ['#f97316','#0ea5e9','#ef4444','#84cc16','#10b981'][Math.floor(Math.random()*5)]
+    };
+    cars.push(car);
+  }
+
+  // Rover types
+  const TYPES = {
+    normal:{color:'#34d399',speed:60,points:10,deb:'none'},
+    fast:{color:'#fb7185',speed:110,points:15,deb:'none'},
+    debuff:{color:'#c084fc',speed:70,points:5,deb:'time'} // applies time penalty when destroyed
+  };
+
+  // Фиксированная мобильная карта по схеме — здания (голубые) и Яндекс Лавка (желтая)
+  // Вертикальная схема для мобилок (canvas 500×900)
+  // Старая планировка, но дома СИЛЬНО уменьшены для очень широких дорог
+  const buildings = [
+    // Верхний ряд зданий (сильно уменьшены)
+    {x:20, y:20, w:140, h:70, color:'#5dade2'},
+    {x:300, y:20, w:180, h:70, color:'#5dade2'},
+    
+    // Левая колонка
+    {x:10, y:150, w:70, h:150, color:'#5dade2'},
+    
+    // Центральный большой блок
+    {x:140, y:150, w:340, h:100, color:'#5dade2'},
+    
+    // Яндекс лавка (желтая, по центру)
+    {x:160, y:290, w:160, h:120, label:'Яндекс лавка', color:'#f4d03f'},
+    
+    // Правый большой блок
+    {x:390, y:340, w:90, h:250, color:'#5dade2'},
+    
+    // Левый нижний
+    {x:10, y:370, w:70, h:110, color:'#5dade2'},
+    
+    // Центральный нижний
+    {x:140, y:460, w:180, h:100, color:'#5dade2'},
+    
+    // Самый низ слева
+    {x:10, y:540, w:70, h:350, color:'#5dade2'},
+    
+    // Самый низ по центру-справа
+    {x:140, y:620, w:340, h:270, color:'#5dade2'}
+  ];
+  
+  const LAVKA = {x: 240, y: 350};
+  const CROSSWALKS = [];
+  
+  // Сетка узлов для pathfinding (вертикальная, 4 колонки × 7 рядов)
+  const grid = [
+    [{x:80,y:80},{x:200,y:80},{x:350,y:80},{x:450,y:80}],
+    [{x:80,y:180},{x:200,y:180},{x:350,y:180},{x:450,y:180}],
+    [{x:80,y:280},{x:200,y:280},{x:350,y:280},{x:450,y:280}],
+    [{x:80,y:400},{x:200,y:400},{x:350,y:400},{x:450,y:400}],
+    [{x:80,y:530},{x:200,y:530},{x:350,y:530},{x:450,y:530}],
+    [{x:80,y:670},{x:200,y:670},{x:350,y:670},{x:450,y:670}],
+    [{x:80,y:810},{x:200,y:810},{x:350,y:810},{x:450,y:810}]
+  ];
+  const GRID_ROWS = grid.length;
+  const GRID_COLS = grid[0].length;
+
+  function nearestGridNode(px,py){
+    let best=null, bd=1e9; for(let r=0;r<GRID_ROWS;r++) for(let c=0;c<GRID_COLS;c++){ const n=grid[r][c]; const d = Math.abs(n.x-px)+Math.abs(n.y-py); if(d<bd){bd=d;best={r,c};}} return best; }
+
+  function findPath(from, to){
+    // simple BFS on grid neighbors (4-connected)
+    const start = {r:from.r, c:from.c};
+    const goal = {r:to.r, c:to.c};
+    const key = (x,y)=>`${x},${y}`;
+    const q=[start]; const prev={}; prev[key(start.r,start.c)]=null;
+    while(q.length){ const cur=q.shift(); if(cur.r===goal.r && cur.c===goal.c) break; const dirs=[[1,0],[-1,0],[0,1],[0,-1]]; for(const [dr,dc] of dirs){ const nr=cur.r+dr,nc=cur.c+dc; if(nr<0||nr>=GRID_ROWS||nc<0||nc>=GRID_COLS) continue; const k=key(nr,nc); if(k in prev) continue; prev[k]=cur; q.push({r:nr,c:nc}); }}
+    const path=[]; let cur={r:goal.r,c:goal.c}; const k=key(cur.r,cur.c); if(!(k in prev)) return []; while(cur){ path.push(cur); cur = prev[key(cur.r,cur.c)]; }
+    path.reverse(); return path;
+  }
+
+  function rand(min,max){return Math.random()*(max-min)+min}
+
+  function spawnRover(){
+    // limit concurrent rovers
+    if(rovers.length >= 5) return; // keep population small for mobile
+    // spawn near a random grid node and walk to another node (more city-like)
+    const pick = Math.random()<0.08? 'fast' : (Math.random()<0.12? 'debuff' : 'normal');
+    const type = TYPES[pick];
+    const sizeMul = rand(0.8,1.2);
+    const speed = type.speed * (0.35 + Math.random()*0.6);
+    // pick random source and target nodes
+    const sr = Math.floor(Math.random() * GRID_ROWS);
+    const sc = Math.floor(Math.random() * GRID_COLS);
+    const tr = Math.floor(Math.random() * GRID_ROWS);
+    const tc = Math.floor(Math.random() * GRID_COLS);
+    const src = grid[sr][sc];
+    const tgt = grid[tr][tc];
+    // spawn a little offset from node so not all on exact point
+    const jitter = 12;
+    const x = src.x + rand(-jitter,jitter);
+    const y = src.y + rand(-jitter,jitter);
+    const dir = Math.sign(tgt.x - x) || 1;
+    const r = {
+      x: x,
+      y: y,
+      r: Math.round(12 * sizeMul),
+      vx: 0,
+      vy: 0,
+      speed: speed,
+      maxHp: Math.max(1, Math.round(2 * sizeMul)),
+      hp: Math.max(1, Math.round(2 * sizeMul)),
+      type: pick,
+      color: type.color,
+      points: Math.max(1, Math.round(type.points * sizeMul)),
+      stun: 0,
+      side: 'sidewalk',
+      dir: dir,
+      state: 'sidewalk',
+      targetCross: null
+    };
+    r.nextCross = 6000 + Math.random() * 18000;
+    r.goal = { x: tgt.x, y: tgt.y };
+    const fromNode = nearestGridNode(r.x, r.y);
+    const toNode = nearestGridNode(r.goal.x, r.goal.y);
+    if(fromNode && toNode){ r.path = findPath(fromNode,toNode); r.pathIndex = 0; }
+    rovers.push(r);
+  }
+
+  function update(dt){
+    if(gamestate!=='running') return;
+  lastSpawn += dt;
+  // dynamic spawn interval with slight randomness (timer removed)
+  const dynamicInterval = spawnInterval + Math.round(Math.random() * 800 - 400);
+  if(lastSpawn > dynamicInterval){ spawnRover(); lastSpawn = 0; }
+    // move rovers (sidewalk behavior)
+    const roadY = H/2 - 60;
+    for(let i=rovers.length-1;i>=0;i--){
+      const r = rovers[i];
+      if(r.stun > 0){ r.stun = Math.max(0, r.stun - dt); }
+      if(r.state === 'sidewalk'){
+        // follow path nodes if available
+        if(r.path && r.path.length){
+          const node = grid[r.path[r.pathIndex].r][r.path[r.pathIndex].c];
+          const dx = node.x - r.x, dy = node.y - r.y;
+          const dist = Math.sqrt(dx*dx+dy*dy);
+          if(dist < 8){ // reached node
+            if(r.pathIndex < r.path.length-1) r.pathIndex++; else { /* reached goal node, attempt final move to Lavka */ r.state='to_lavka'; }
+          } else {
+            r.vx = (dx/dist) * r.speed;
+            r.vy = (dy/dist) * r.speed;
+            r.x += r.vx * (dt/1000);
+            r.y += r.vy * (dt/1000);
+          }
+        } else {
+          // walk along x as fallback
+          r.vy = 0;
+          r.x += r.vx * (dt/1000);
+          // wrap at edges
+          if(r.x < -20) r.x = W + 20;
+          if(r.x > W + 20) r.x = -20;
+        }
+        // decide to cross when scheduled OR when goal lies across many roads
+        r.nextCross -= dt;
+        const dxToGoal = r.goal.x - r.x;
+        const needToCrossTowardGoal = Math.abs(dxToGoal) > 80 && Math.sign(dxToGoal) === r.dir;
+        if((r.nextCross <= 0 && !r.targetCross) || (needToCrossTowardGoal && !r.targetCross)){
+          const candidates = CROSSWALKS.filter(cx => (r.dir > 0 ? cx > r.x : cx < r.x));
+          if(candidates.length){ r.targetCross = r.dir > 0 ? Math.min(...candidates) : Math.max(...candidates); }
+          r.nextCross = 8000 + Math.random() * 24000;
+        }
+         if(r.targetCross){
+           // if close to crosswalk, try to start crossing if safe
+           if(Math.abs(r.x - r.targetCross) < 18){
+             // check for nearby cars: if any car is within danger range keep waiting
+             const danger = cars.some(c=> Math.abs(c.x - r.targetCross) < 160 && Math.abs(c.vx) > 50);
+             if(danger){ r.state = 'waiting'; }
+             else { r.state = 'crossing'; r.vx = 0; r.vy = r.side === 'top' ? Math.abs(r.speed)*1.6 : -Math.abs(r.speed)*1.6; }
+           }
+         }
+        // if close to Lavka horizontally and on same side, start moving toward Lavka (final approach)
+        if(Math.hypot(r.x - r.goal.x, r.y - r.goal.y) < 120){ r.state='to_lavka'; }
+       } else if(r.state === 'waiting'){
+         // stay near crosswalk until safe
+         const danger = cars.some(c=> Math.abs(c.x - r.targetCross) < 160 && Math.abs(c.vx) > 50);
+         if(!danger){ r.state = 'crossing'; r.vx = 0; r.vy = r.side === 'top' ? Math.abs(r.speed)*1.6 : -Math.abs(r.speed)*1.6; }
+       } else if(r.state === 'crossing'){
+         // move vertically across the road at targetCross x
+         // lock x to crosswalk
+         r.x = r.targetCross;
+         r.y += r.vy * (dt/1000);
+         // check if reached other sidewalk
+         if(r.side === 'top' && r.y > roadY + 140){
+           r.side = 'bottom'; r.state = 'sidewalk'; r.vy = 0; r.dir = Math.random()<0.5?1:-1; r.vx = r.speed * r.dir; r.targetCross = null;
+         }
+         if(r.side === 'bottom' && r.y < roadY - 20){
+           r.side = 'top'; r.state = 'sidewalk'; r.vy = 0; r.dir = Math.random()<0.5?1:-1; r.vx = r.speed * r.dir; r.targetCross = null;
+         }
+        // after finishing crossing, if had a path continue following it
+        if(r.state === 'sidewalk' && r.path){ r.vx = 0; r.vy = 0; }
+       }
+      // if in final approach, move directly to Lavka
+      if(r.state === 'to_lavka'){
+        const dx = r.goal.x - r.x, dy = r.goal.y - r.y; const d = Math.sqrt(dx*dx+dy*dy);
+        if(d < 10){ r.x = r.goal.x; r.y = r.goal.y; r.state='arrived'; arrivedCount++; document.getElementById('arrived').textContent = arrivedCount; }
+        else { r.vx = (dx/d) * r.speed * 1.1; r.vy = (dy/d) * r.speed * 1.1; r.x += r.vx * (dt/1000); r.y += r.vy * (dt/1000); }
+      }
+      // arrival detection: if close to LAVKA, stop and mark arrived
+      if(r.state !== 'arrived'){
+        const dx = r.x - LAVKA.x, dy = r.y - LAVKA.y;
+        if(Math.sqrt(dx*dx+dy*dy) < 36){
+          r.state = 'arrived'; r.vx = 0; r.vy = 0; arrivedCount += 1; document.getElementById('arrived').textContent = arrivedCount;
+        }
+      }
+     }
+     // cars movement
+  lastCarSpawn += dt;
+  if(lastCarSpawn > 8000){ spawnCar(); lastCarSpawn = 0; } // Ещё реже машины
+     for(let i=cars.length-1;i>=0;i--){
+       const c = cars[i];
+       // step towards target node
+       const dx = c.targetX - c.x; const dy = c.targetY - c.y; const d = Math.hypot(dx,dy);
+       if(d > 6){ const nx = (dx/d) * Math.hypot(c.vx, c.vy); const ny = (dy/d) * Math.hypot(c.vx, c.vy); c.x += nx * (dt/1000); c.y += ny * (dt/1000); }
+       else {
+         // arrived at node: pick next neighboring node (4-neighbors) and set as new target
+         // find nearest grid node index for current target
+         const node = nearestGridNode(c.targetX, c.targetY);
+         if(node){
+           const r = node.r, cc = node.c;
+           const neighbors = [];
+           if(r > 0) neighbors.push(grid[r-1][cc]);
+           if(r < GRID_ROWS-1) neighbors.push(grid[r+1][cc]);
+           if(cc > 0) neighbors.push(grid[r][cc-1]);
+           if(cc < GRID_COLS-1) neighbors.push(grid[r][cc+1]);
+           if(neighbors.length){
+             const next = neighbors[Math.floor(Math.random()*neighbors.length)];
+             c.targetX = next.x; c.targetY = next.y;
+             const dist2 = Math.hypot(c.targetX - c.x, c.targetY - c.y) || 1;
+             const speed = rand(140,260);
+             c.vx = ((c.targetX - c.x) / dist2) * speed;
+             c.vy = ((c.targetY - c.y) / dist2) * speed;
+           } else {
+             // no neighbor (shouldn't happen) -> remove
+             cars.splice(i,1); continue;
+           }
+         } else { cars.splice(i,1); continue; }
+       }
+       // remove when far outside bounds
+       if(c.x < -300 || c.x > W + 300 || c.y < -300 || c.y > H + 300){ cars.splice(i,1); continue; }
+       // check collision with rovers
+       for(const r of rovers){
+         const dx2 = r.x - c.x; const dy2 = r.y - c.y;
+         const overlap = Math.abs(dy2) < (c.h/2 + r.r) && Math.abs(dx2) < (c.w/2 + r.r);
+         if(overlap){
+           // car hit rover: apply heavy knockback and stun
+           const force = Math.max(200, Math.hypot(c.vx, c.vy) * 0.9);
+           r.vx = Math.sign(c.vx || 1) * force * (Math.random()*0.8 + 0.6);
+           r.vy = rand(-240,240);
+           r.stun = 500 + Math.random()*600;
+           // small HP damage but do not remove
+           r.hp = Math.max(1, r.hp - 1);
+         }
+       }
+     }
+  }
+
+  function draw(){
+    // background sky (утреннее небо)
+    const gradient = ctx.createLinearGradient(0, 0, 0, H);
+    gradient.addColorStop(0, '#a8d8ea');
+    gradient.addColorStop(1, '#e0f7fa');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+
+    // draw wide asphalt roads as background
+    ctx.fillStyle = '#1a1a1a'; 
+    ctx.fillRect(0, 0, W, H);
+    
+    // add asphalt texture (diagonal cracks)
+    ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+    ctx.lineWidth = 1;
+    for(let i = 0; i < H; i += 8){
+      ctx.beginPath();
+      ctx.moveTo(0, i);
+      ctx.lineTo(W, i);
+      ctx.stroke();
+    }
+    for(let i = 0; i < W; i += 12){
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, H);
+      ctx.stroke();
+    }
+
+    // draw grid-based roads with VERY WIDE dimensions
+    const ROAD_WIDTH = 120; // ОЧЕНЬ ШИРОКАЯ проезжая часть (2 полосы в каждую сторону)
+    const SIDEWALK_WIDTH = 60; // ОЧЕНЬ ШИРОКИЕ тротуары для роверов
+    
+    // horizontal roads between grid nodes
+    for(let r = 0; r < GRID_ROWS; r++){
+      for(let c = 0; c < GRID_COLS - 1; c++){
+        const a = grid[r][c];
+        const b = grid[r][c + 1];
+        const x1 = Math.min(a.x, b.x);
+        const x2 = Math.max(a.x, b.x);
+        const y = (a.y + b.y) / 2;
+        
+        // road asphalt (very dark)
+        ctx.fillStyle = '#1f1f1f';
+        ctx.fillRect(x1, y - ROAD_WIDTH/2, x2 - x1, ROAD_WIDTH);
+        
+        // road borders
+        ctx.strokeStyle = '#3a3a3a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x1, y - ROAD_WIDTH/2, x2 - x1, ROAD_WIDTH);
+        
+        // center double yellow lines
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y - 2);
+        ctx.lineTo(x2, y - 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x1, y + 2);
+        ctx.lineTo(x2, y + 2);
+        ctx.stroke();
+        
+        // side white dashed lines
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([20, 15]);
+        ctx.beginPath();
+        ctx.moveTo(x1, y - ROAD_WIDTH/2 + 10);
+        ctx.lineTo(x2, y - ROAD_WIDTH/2 + 10);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x1, y + ROAD_WIDTH/2 - 10);
+        ctx.lineTo(x2, y + ROAD_WIDTH/2 - 10);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // sidewalks (светлая плитка)
+        const sidewalkGrad1 = ctx.createLinearGradient(0, y - ROAD_WIDTH/2 - SIDEWALK_WIDTH, 0, y - ROAD_WIDTH/2);
+        sidewalkGrad1.addColorStop(0, '#b8b8b8');
+        sidewalkGrad1.addColorStop(1, '#a0a0a0');
+        ctx.fillStyle = sidewalkGrad1;
+        ctx.fillRect(x1, y - ROAD_WIDTH/2 - SIDEWALK_WIDTH, x2 - x1, SIDEWALK_WIDTH);
+        
+        const sidewalkGrad2 = ctx.createLinearGradient(0, y + ROAD_WIDTH/2, 0, y + ROAD_WIDTH/2 + SIDEWALK_WIDTH);
+        sidewalkGrad2.addColorStop(0, '#a0a0a0');
+        sidewalkGrad2.addColorStop(1, '#b8b8b8');
+        ctx.fillStyle = sidewalkGrad2;
+        ctx.fillRect(x1, y + ROAD_WIDTH/2, x2 - x1, SIDEWALK_WIDTH);
+        
+        // sidewalk tiles pattern
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = 1;
+        for(let tx = x1; tx < x2; tx += 30){
+          ctx.beginPath();
+          ctx.moveTo(tx, y - ROAD_WIDTH/2 - SIDEWALK_WIDTH);
+          ctx.lineTo(tx, y - ROAD_WIDTH/2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(tx, y + ROAD_WIDTH/2);
+          ctx.lineTo(tx, y + ROAD_WIDTH/2 + SIDEWALK_WIDTH);
+          ctx.stroke();
+        }
+      }
+    }
+    
+    // vertical roads between grid nodes
+    for(let c = 0; c < GRID_COLS; c++){
+      for(let r = 0; r < GRID_ROWS - 1; r++){
+        const a = grid[r][c];
+        const b = grid[r + 1][c];
+        const y1 = Math.min(a.y, b.y);
+        const y2 = Math.max(a.y, b.y);
+        const x = (a.x + b.x) / 2;
+        
+        // road asphalt
+        ctx.fillStyle = '#1f1f1f';
+        ctx.fillRect(x - ROAD_WIDTH/2, y1, ROAD_WIDTH, y2 - y1);
+        
+        ctx.strokeStyle = '#3a3a3a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - ROAD_WIDTH/2, y1, ROAD_WIDTH, y2 - y1);
+        
+        // center double yellow lines
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(x - 2, y1);
+        ctx.lineTo(x - 2, y2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + 2, y1);
+        ctx.lineTo(x + 2, y2);
+        ctx.stroke();
+        
+        // side white dashed lines
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([20, 15]);
+        ctx.beginPath();
+        ctx.moveTo(x - ROAD_WIDTH/2 + 10, y1);
+        ctx.lineTo(x - ROAD_WIDTH/2 + 10, y2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + ROAD_WIDTH/2 - 10, y1);
+        ctx.lineTo(x + ROAD_WIDTH/2 - 10, y2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // sidewalks
+        const sidewalkGrad1 = ctx.createLinearGradient(x - ROAD_WIDTH/2 - SIDEWALK_WIDTH, 0, x - ROAD_WIDTH/2, 0);
+        sidewalkGrad1.addColorStop(0, '#b8b8b8');
+        sidewalkGrad1.addColorStop(1, '#a0a0a0');
+        ctx.fillStyle = sidewalkGrad1;
+        ctx.fillRect(x - ROAD_WIDTH/2 - SIDEWALK_WIDTH, y1, SIDEWALK_WIDTH, y2 - y1);
+        
+        const sidewalkGrad2 = ctx.createLinearGradient(x + ROAD_WIDTH/2, 0, x + ROAD_WIDTH/2 + SIDEWALK_WIDTH, 0);
+        sidewalkGrad2.addColorStop(0, '#a0a0a0');
+        sidewalkGrad2.addColorStop(1, '#b8b8b8');
+        ctx.fillStyle = sidewalkGrad2;
+        ctx.fillRect(x + ROAD_WIDTH/2, y1, SIDEWALK_WIDTH, y2 - y1);
+        
+        // sidewalk tiles
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = 1;
+        for(let ty = y1; ty < y2; ty += 30){
+          ctx.beginPath();
+          ctx.moveTo(x - ROAD_WIDTH/2 - SIDEWALK_WIDTH, ty);
+          ctx.lineTo(x - ROAD_WIDTH/2, ty);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(x + ROAD_WIDTH/2, ty);
+          ctx.lineTo(x + ROAD_WIDTH/2 + SIDEWALK_WIDTH, ty);
+          ctx.stroke();
+        }
+      }
+    }
+    
+    // draw WIDE crosswalks (zebra) at intersections
+    const ZEBRA_STRIPE_WIDTH = 30;
+    const ZEBRA_STRIPE_GAP = 8;
+    
+    for(let r = 0; r < GRID_ROWS; r++){
+      for(let c = 0; c < GRID_COLS - 1; c++){
+        const a = grid[r][c];
+        const b = grid[r][c + 1];
+        const y = (a.y + b.y) / 2;
+        const x1 = a.x + 20;
+        const x2 = b.x - 20;
+        
+        // zebra background (yellow safety zone)
+        ctx.fillStyle = 'rgba(255,255,0,0.15)';
+        ctx.fillRect(x1 - 10, y - ROAD_WIDTH/2, x2 - x1 + 20, ROAD_WIDTH);
+        
+        // zebra stripes (thick white)
+        ctx.fillStyle = '#fff';
+        for(let x = x1; x < x2; x += ZEBRA_STRIPE_WIDTH + ZEBRA_STRIPE_GAP){
+          ctx.fillRect(x, y - ROAD_WIDTH/2 + 5, ZEBRA_STRIPE_WIDTH, ROAD_WIDTH - 10);
+          // zebra stripe shadow
+          ctx.fillStyle = 'rgba(0,0,0,0.1)';
+          ctx.fillRect(x + 2, y - ROAD_WIDTH/2 + 7, ZEBRA_STRIPE_WIDTH, ROAD_WIDTH - 10);
+          ctx.fillStyle = '#fff';
+        }
+      }
+    }
+    
+    for(let c = 0; c < GRID_COLS; c++){
+      for(let r = 0; r < GRID_ROWS - 1; r++){
+        const a = grid[r][c];
+        const b = grid[r + 1][c];
+        const x = (a.x + b.x) / 2;
+        const y1 = a.y + 20;
+        const y2 = b.y - 20;
+        
+        // zebra background
+        ctx.fillStyle = 'rgba(255,255,0,0.15)';
+        ctx.fillRect(x - ROAD_WIDTH/2, y1 - 10, ROAD_WIDTH, y2 - y1 + 20);
+        
+        // zebra stripes
+        ctx.fillStyle = '#fff';
+        for(let y = y1; y < y2; y += ZEBRA_STRIPE_WIDTH + ZEBRA_STRIPE_GAP){
+          ctx.fillRect(x - ROAD_WIDTH/2 + 5, y, ROAD_WIDTH - 10, ZEBRA_STRIPE_WIDTH);
+          ctx.fillStyle = 'rgba(0,0,0,0.1)';
+          ctx.fillRect(x - ROAD_WIDTH/2 + 7, y + 2, ROAD_WIDTH - 10, ZEBRA_STRIPE_WIDTH);
+          ctx.fillStyle = '#fff';
+        }
+      }
+    }
+
+    // draw Petersburg-style buildings (each unique!)
+    buildings.forEach((b, idx) => {
+      // building shadow (drop shadow)
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(b.x + 6, b.y + 6, b.w, b.h);
+      
+      // Unique building styles
+      const buildingStyles = [
+        {color: '#d4a574', cornice: '#f5f5dc', windowStyle: 'classic', floors: 3, hasBalcony: true, doorColor: '#4a3520'},
+        {color: '#e8d4b0', cornice: '#fff8dc', windowStyle: 'arched', floors: 4, hasBalcony: false, doorColor: '#5a4530'},
+        {color: '#c9b896', cornice: '#fffacd', windowStyle: 'modern', floors: 3, hasBalcony: true, doorColor: '#3a2510'},
+        {color: '#f0e6d2', cornice: '#f0e68c', windowStyle: 'classic', floors: 5, hasBalcony: true, doorColor: '#6a5540'},
+        {color: '#d9c6a3', cornice: '#faebd7', windowStyle: 'tall', floors: 4, hasBalcony: false, doorColor: '#4a3520'},
+        {color: '#c4b59d', cornice: '#fff5ee', windowStyle: 'arched', floors: 3, hasBalcony: true, doorColor: '#5a4530'},
+        {color: '#e6d7c3', cornice: '#fdf5e6', windowStyle: 'modern', floors: 4, hasBalcony: false, doorColor: '#3a2510'},
+        {color: '#d0bfa1', cornice: '#fffaf0', windowStyle: 'tall', floors: 3, hasBalcony: true, doorColor: '#6a5540'},
+        {color: '#ddc9af', cornice: '#f5f5dc', windowStyle: 'classic', floors: 5, hasBalcony: true, doorColor: '#4a3520'},
+        {color: '#c7b299', cornice: '#ffefd5', windowStyle: 'arched', floors: 4, hasBalcony: false, doorColor: '#5a4530'}
+      ];
+      
+      const style = buildingStyles[idx % buildingStyles.length];
+      
+      // main building facade
+      if(!b.label){
+        ctx.fillStyle = style.color;
+      } else {
+        ctx.fillStyle = b.color;
+      }
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      
+      // add classical Petersburg details for regular buildings
+      if(!b.label){
+        // лепнина сверху (cornice) - unique for each building
+        ctx.fillStyle = style.cornice;
+        ctx.fillRect(b.x, b.y, b.w, 10);
+        // decorative pattern on cornice
+        ctx.fillStyle = 'rgba(0,0,0,0.15)';
+        for(let cx = b.x + 8; cx < b.x + b.w; cx += 16){
+          ctx.fillRect(cx, b.y + 2, 2, 6);
+        }
+        ctx.fillStyle = 'rgba(0,0,0,0.1)';
+        ctx.fillRect(b.x, b.y + 10, b.w, 3);
+        
+        // different window styles
+        const windowW = style.windowStyle === 'tall' ? 12 : (style.windowStyle === 'arched' ? 16 : 14);
+        const windowH = style.windowStyle === 'tall' ? 28 : (style.windowStyle === 'arched' ? 20 : 22);
+        const windowGapX = windowW + 8;
+        const windowGapY = windowH + 8;
+        
+        const numFloors = Math.min(style.floors, Math.floor(b.h / 35));
+        
+        for(let floor = 0; floor < numFloors; floor++){
+          for(let wx = b.x + 15; wx < b.x + b.w - 15; wx += windowGapX){
+            const wy = b.y + 18 + floor * windowGapY;
+            
+            if(wy + windowH > b.y + b.h - 40) continue;
+            
+            // window glass (разные оттенки для разнообразия)
+            const glassColors = ['rgba(50,100,150,0.5)', 'rgba(80,120,160,0.5)', 'rgba(60,110,170,0.5)'];
+            ctx.fillStyle = glassColors[floor % glassColors.length];
+            
+            if(style.windowStyle === 'arched'){
+              // arched window
+              ctx.fillRect(wx, wy + 4, windowW, windowH - 4);
+              ctx.beginPath();
+              ctx.arc(wx + windowW/2, wy + 4, windowW/2, Math.PI, 0);
+              ctx.fill();
+            } else {
+              ctx.fillRect(wx, wy, windowW, windowH);
+            }
+            
+            // window frame (white or cream)
+            const frameColor = idx % 2 === 0 ? '#fff' : '#fffef0';
+            ctx.strokeStyle = frameColor;
+            ctx.lineWidth = 2;
+            
+            if(style.windowStyle === 'arched'){
+              ctx.strokeRect(wx, wy + 4, windowW, windowH - 4);
+              ctx.beginPath();
+              ctx.arc(wx + windowW/2, wy + 4, windowW/2, Math.PI, 0);
+              ctx.stroke();
+            } else {
+              ctx.strokeRect(wx, wy, windowW, windowH);
+            }
+            
+            // window details based on style
+            if(style.windowStyle === 'classic'){
+              // cross dividers
+              ctx.beginPath();
+              ctx.moveTo(wx + windowW/2, wy);
+              ctx.lineTo(wx + windowW/2, wy + windowH);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(wx, wy + windowH/2);
+              ctx.lineTo(wx + windowW, wy + windowH/2);
+              ctx.stroke();
+            } else if(style.windowStyle === 'modern'){
+              // minimal frame
+              ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+              ctx.lineWidth = 1;
+              ctx.strokeRect(wx + 2, wy + 2, windowW - 4, windowH - 4);
+            }
+            
+            // balcony (unique pattern per building)
+            if(style.hasBalcony && floor > 0 && ((floor % 2 === 1 && idx % 2 === 0) || (floor % 3 === 1 && idx % 2 === 1))){
+              ctx.fillStyle = 'rgba(200,200,200,0.9)';
+              ctx.fillRect(wx - 3, wy + windowH - 2, windowW + 6, 5);
+              
+              // balcony railing (different styles)
+              ctx.strokeStyle = '#888';
+              ctx.lineWidth = 1.5;
+              if(idx % 3 === 0){
+                // vertical bars
+                for(let bx = wx; bx < wx + windowW; bx += 5){
+                  ctx.beginPath();
+                  ctx.moveTo(bx, wy + windowH + 1);
+                  ctx.lineTo(bx, wy + windowH + 10);
+                  ctx.stroke();
+                }
+              } else if(idx % 3 === 1){
+                // decorative pattern
+                ctx.beginPath();
+                for(let bx = wx; bx < wx + windowW; bx += 6){
+                  ctx.moveTo(bx, wy + windowH + 1);
+                  ctx.lineTo(bx + 3, wy + windowH + 6);
+                  ctx.lineTo(bx + 6, wy + windowH + 1);
+                }
+                ctx.stroke();
+              } else {
+                // X pattern
+                for(let bx = wx; bx < wx + windowW; bx += 8){
+                  ctx.beginPath();
+                  ctx.moveTo(bx, wy + windowH + 1);
+                  ctx.lineTo(bx + 4, wy + windowH + 10);
+                  ctx.moveTo(bx + 4, wy + windowH + 1);
+                  ctx.lineTo(bx, wy + windowH + 10);
+                  ctx.stroke();
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // building outline (thick border)
+      ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      
+      // draw label for Lavka
+      if(b.label){
+        // Lavka sign background
+        ctx.fillStyle = '#ff6b35';
+        ctx.fillRect(b.x + 10, b.y + 10, b.w - 20, 50);
+        
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 22px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.label, b.x + b.w/2, b.y + 35);
+        
+        // store icon
+        ctx.font = '60px Arial';
+        ctx.fillText('🏪', b.x + b.w/2, b.y + b.h/2 + 20);
+      }
+    });
+
+    // draw rovers (on sidewalks and crossings)
+    for(const r of rovers){
+      // rover shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(r.x + 2, r.y + r.r + 2, r.r * 0.8, r.r * 0.3, 0, 0, Math.PI*2);
+      ctx.fill();
+      
+      // rover body
+      ctx.beginPath(); 
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); 
+      ctx.fillStyle = r.color; 
+      ctx.fill();
+      
+      // rover highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath();
+      ctx.arc(r.x - r.r/3, r.y - r.r/3, r.r/3, 0, Math.PI*2);
+      ctx.fill();
+      
+      // hp text
+      ctx.fillStyle = '#fff'; 
+      ctx.font = 'bold 16px Arial'; 
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(r.hp, r.x, r.y);
+      ctx.fillText(r.hp, r.x, r.y);
+      
+      // outline
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)'; 
+      ctx.lineWidth = 3; 
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI*2);
+      ctx.stroke();
+      
+      // waiting indicator
+      if(r.state === 'waiting'){
+        ctx.fillStyle = 'rgba(255,255,255,0.9)'; 
+        ctx.font = '20px Arial'; 
+        ctx.fillText('⏳', r.x, r.y - r.r - 15);
+      }
+    }
+
+    // draw cars on roads with realistic details
+    for(const c of cars){
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      const ang = Math.atan2(c.vy || 0, c.vx || 1);
+      ctx.rotate(ang);
+      
+      // car shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(-c.w/2 + 3, -c.h/2 + 3, c.w, c.h);
+      
+      // car body
+      ctx.fillStyle = c.color; 
+      ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+      
+      // car roof (slightly darker)
+      const roofColor = c.color.replace('rgb', 'rgba').replace(')', ',0.7)');
+      ctx.fillStyle = roofColor;
+      ctx.fillRect(-c.w/2 + 4, -c.h/2 + 2, c.w - 8, c.h/3);
+      
+      // windows (blue glass)
+      ctx.fillStyle = 'rgba(100,150,200,0.7)'; 
+      ctx.fillRect(-c.w/2 + 6, -c.h/2 + 4, c.w/3, c.h/4);
+      ctx.fillRect(c.w/2 - 6 - c.w/3, -c.h/2 + 4, c.w/3, c.h/4);
+      
+      // headlights
+      ctx.fillStyle = '#ffffaa';
+      ctx.fillRect(c.w/2 - 4, -c.h/2 + 2, 3, 6);
+      ctx.fillRect(c.w/2 - 4, c.h/2 - 8, 3, 6);
+      
+      // car outline
+      ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-c.w/2, -c.h/2, c.w, c.h);
+      
+      ctx.restore();
+    }
+
+    // draw debug overlay if enabled
+    try{
+      const debugToggle = document.getElementById('debugToggle');
+      const debug = debugToggle && debugToggle.checked;
+      if(debug){
+        // draw grid nodes
+        for(let r=0;r<GRID_ROWS;r++) {
+          for(let c=0;c<GRID_COLS;c++){ 
+            const n = grid[r][c]; 
+            ctx.fillStyle='rgba(255,0,0,0.9)'; 
+            ctx.beginPath(); 
+            ctx.arc(n.x,n.y,6,0,Math.PI*2); 
+            ctx.fill(); 
+            // draw node label
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${r},${c}`, n.x, n.y - 10);
+          }
+        }
+        // draw rover paths
+        for(const rr of rovers){ 
+          if(rr.path && rr.path.length){ 
+            ctx.strokeStyle='rgba(0,255,128,0.8)'; 
+            ctx.lineWidth=3; 
+            ctx.beginPath(); 
+            ctx.moveTo(rr.x, rr.y); 
+            for(let pi=rr.pathIndex; pi<rr.path.length; pi++){ 
+              const node = grid[rr.path[pi].r][rr.path[pi].c]; 
+              ctx.lineTo(node.x, node.y); 
+            } 
+            ctx.stroke(); 
+          }
+        }
+        // draw car targets
+        for(const cc of cars){ 
+          ctx.fillStyle='rgba(255,255,0,0.9)'; 
+          ctx.beginPath(); 
+          ctx.arc(cc.targetX, cc.targetY, 5,0,Math.PI*2); 
+          ctx.fill(); 
+        }
+      }
+    }catch(e){}
+  }
+
+  function loop(now){
+    const dt = now - lastTime; lastTime = now;
+    update(dt); draw();
+    requestAnimationFrame(loop);
+  }
+
+  canvas.addEventListener('pointerdown', (e)=>{
+    if(gamestate !== 'running') return;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width/rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height/rect.height);
+    // find topmost rover hit
+    for(let i=rovers.length-1;i>=0;i--){
+      const r = rovers[i];
+      const dx = x - r.x, dy = y - r.y;
+      if(dx*dx+dy*dy <= r.r*r.r){
+        if(r.stun > 0) { break; }
+        r.hp -= 1;
+        // small hit feedback: knockback + brief stun
+        r.vx = -r.vx * 0.9;
+        r.vy += rand(-40,40);
+        r.stun = 150; // ms
+        if(r.hp <= 0){
+          // 'destroyed' but don't remove — reset hp and apply stronger, chaotic knockback
+          score += r.points;
+          if(r.type === 'debuff'){
+            // debuff type: reduce score slightly instead of time penalty
+            score = Math.max(0, score - 1);
+            document.getElementById('score').textContent = score;
+          }
+          r.hp = r.maxHp;
+          // chaotic knockback impulse
+          const kb = (0.6 + Math.random() * 2.0);
+          r.vx = (Math.sign(r.vx) || 1) * (r.speed * kb * (Math.random() < 0.5 ? -1 : 1));
+          r.vy = rand(-200, 200);
+          r.stun = 300 + Math.random() * 400;
+          document.getElementById('score').textContent = score;
+          break;
+        } else {
+          // partial hit score scales with how damaged the rover was
+          score += Math.max(1, Math.round(0.8 * (r.maxHp - r.hp + 1)));
+          document.getElementById('score').textContent = score;
+          break;
+        }
+      }
+    }
+  });
+
+  // timer removed — game has no time limit (infinite play)
+
+  function startGame(){
+    rovers.length = 0; lastSpawn=0; score=0; gamestate='running';
+    document.getElementById('score').textContent = score;
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('sendBtn').style.display = 'none';
+  }
+
+  function endGame(){
+    gamestate='ended';
+    // save best
+    if(score > best){ best = score; localStorage.setItem('rs_best', best); }
+    // show overlay
+    const tpl = document.getElementById('endTpl');
+    const node = tpl.content.cloneNode(true);
+    node.querySelector('#finalScore').textContent = score;
+    node.querySelector('#finalBest').textContent = best;
+    document.body.appendChild(node);
+    document.getElementById('startBtn').style.display = 'inline-block';
+    document.getElementById('sendBtn').style.display = 'inline-block';
+    // hook retry and send
+    document.getElementById('retry').onclick = ()=>{ document.querySelector('.overlay').remove(); startGame(); };
+    document.getElementById('sendResult').onclick = sendScore;
+    document.getElementById('best').textContent = best;
+  }
+
+  function sendScore(){
+    const payload = {score, best, ts:Date.now()};
+    // If opened inside Telegram WebApp
+    try{
+      if(window.Telegram && Telegram.WebApp){
+        Telegram.WebApp.sendData(JSON.stringify(payload));
+        alert('Результат отправлен через Telegram WebApp');
+        return;
+      }
+      // Some wrappers expose tgWebApp
+      if(window.TelegramWebApp || window.tgWebApp || window.tg){
+        const w = window.TelegramWebApp || window.tgWebApp || window.tg;
+        if(w.sendData) { w.sendData(JSON.stringify(payload)); alert('Отправлено'); return; }
+      }
+    }catch(e){ console.warn(e); }
+    // fallback: copy to clipboard
+    navigator.clipboard.writeText(JSON.stringify(payload)).then(()=>{
+      alert('Результат скопирован в буфер обмена. Вставьте его в чат с ботом.');
+    }).catch(()=>{ alert('Не удалось отправить результат.'); });
+  }
+
+  document.getElementById('startBtn').addEventListener('click', ()=>{ startGame(); });
+  document.getElementById('sendBtn').addEventListener('click', sendScore);
+
+  // make canvas responsive for mobile: scale canvas to fit viewport width while keeping aspect ratio
+  function fitCanvasToViewport(){
+    const wrap = document.getElementById('canvasWrap');
+    const maxW = Math.min(window.innerWidth - 24, 960);
+    const ratio = W / H;
+    const targetW = Math.round(maxW);
+    const targetH = Math.round(targetW / ratio);
+    canvas.style.width = targetW + 'px';
+    canvas.style.height = targetH + 'px';
+  }
+  window.addEventListener('resize', fitCanvasToViewport);
+  fitCanvasToViewport();
+
+  requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
+

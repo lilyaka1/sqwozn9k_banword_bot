@@ -9,5 +9,5 @@ def load_banned_words(filepath: str = "banned_words.txt") -> list:
         return []
 
 def contains_banned_word(text: str, banned_words: list) -> bool:
-    lowered = text.lower()
+    lowered = te xt.lower()
     return any(word in lowered for word in banned_words)

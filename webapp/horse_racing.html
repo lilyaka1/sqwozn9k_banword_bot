@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rover Racing 🛵 — Betting Game</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;font-family:Inter,system-ui,Arial;background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);color:#fff;overflow:hidden}
+    
+    #app{display:flex;flex-direction:column;height:100vh;max-width:600px;margin:0 auto;padding:12px}
+    
+    header{padding:16px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:12px;margin-bottom:16px;box-shadow:0 4px 12px rgba(59,130,246,0.3),0 0 40px rgba(59,130,246,0.1)}
+    header h1{font-size:24px;margin-bottom:8px;display:flex;align-items:center;gap:8px;text-shadow:0 2px 4px rgba(0,0,0,0.3)}
+    .stats{display:flex;gap:20px;font-size:14px;opacity:0.95}
+    .stat{display:flex;align-items:center;gap:6px}
+    .stat strong{font-size:20px;color:#fbbf24}
+    
+    #gameArea{flex:1;display:flex;flex-direction:column;gap:16px;overflow:auto}
+    
+    /* Betting Panel - Mobile Optimized */
+    #betPanel{background:#2d2a3e;padding:16px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+    #betPanel.hidden{display:none}
+    .bet-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    .bet-option{background:#3a3650;padding:14px;border-radius:8px;cursor:pointer;transition:all 0.2s;border:3px solid transparent;min-height:85px}
+    .bet-option:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(59,130,246,0.3)}
+    .bet-option.selected{border-color:#3b82f6;background:#1e3a8a;box-shadow:0 0 20px rgba(59,130,246,0.5)}
+    .horse-color{width:100%;height:10px;border-radius:5px;margin-bottom:10px}
+    .bet-option strong{display:block;margin-bottom:6px;font-size:15px}
+    .bet-option small{opacity:0.8;font-size:13px}
+    
+    .bet-amount{margin-top:16px}
+    .bet-amount label{display:block;margin-bottom:8px;font-size:15px;opacity:0.9}
+    .bet-controls{display:flex;gap:8px;margin-bottom:12px}
+    .bet-preset{flex:1;padding:12px 8px;border-radius:6px;background:#3a3650;border:2px solid transparent;cursor:pointer;text-align:center;font-weight:600;transition:all 0.2s;font-size:15px;min-height:48px;display:flex;align-items:center;justify-content:center}
+    .bet-preset:hover{background:#4a4660;transform:translateY(-2px)}
+    .bet-preset.active{border-color:#3b82f6;background:#1e3a8a;box-shadow:0 0 15px rgba(59,130,246,0.4)}
+    .bet-preset.all-in{background:linear-gradient(135deg,#dc2626,#991b1b);border-color:transparent;color:#fff;font-weight:700}
+    .bet-preset.all-in:hover{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 20px rgba(220,38,38,0.5)}
+    .bet-amount input{width:100%;padding:14px;border-radius:8px;border:2px solid #3a3650;background:#1a1825;color:#fff;font-size:18px;text-align:center;font-weight:600}
+    .bet-amount input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 15px rgba(59,130,246,0.3)}
+    
+    .btn{background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;padding:16px 28px;border-radius:10px;color:#fff;font-size:18px;font-weight:700;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;width:100%;margin-top:16px;box-shadow:0 4px 12px rgba(59,130,246,0.4)}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(59,130,246,0.6)}
+    .btn:active{transform:scale(0.98)}
+    .btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+    
+    .express-toggle-btn{margin-top:12px;padding:16px;background:linear-gradient(135deg,#78350f,#92400e);border-radius:10px;display:flex;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:all 0.3s;border:3px solid transparent;font-weight:900;font-size:15px;color:#fff;box-shadow:0 0 20px rgba(245,158,11,0.3);min-height:56px}
+    .express-toggle-btn:hover{transform:translateY(-2px);box-shadow:0 0 30px rgba(245,158,11,0.5)}
+    .express-toggle-btn.active{border-color:#f59e0b;box-shadow:0 0 40px rgba(245,158,11,0.7)}
+    .express-toggle-btn .fire{font-size:22px;animation:fireFlicker 1s infinite}
+    @keyframes fireFlicker{
+      0%,100%{transform:scale(1) rotate(-5deg);opacity:1}
+      50%{transform:scale(1.1) rotate(5deg);opacity:0.8}
+    }
+    
+    .express-modes{margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;display:none}
+    .express-modes.show{display:grid}
+    .express-mode{padding:12px 8px;background:#3a3650;border-radius:8px;cursor:pointer;transition:all 0.2s;border:2px solid transparent;text-align:center;min-height:80px;display:flex;flex-direction:column;justify-content:center}
+    .express-mode:hover{background:#4a4660;transform:translateY(-2px)}
+    .express-mode.active{border-color:#f59e0b;background:linear-gradient(135deg,#78350f,#92400e);box-shadow:0 0 20px rgba(245,158,11,0.5)}
+    .express-mode .title{font-weight:900;font-size:11px;margin-bottom:6px;color:#f59e0b;line-height:1.2}
+    .express-mode .coef{font-size:18px;font-weight:700;color:#fff;margin-bottom:4px}
+    .express-mode .desc{font-size:10px;opacity:0.8;margin-top:2px;line-height:1.2}
+    
+    .place-selector{margin-top:12px;display:none}
+    .place-selector.show{display:block}
+    .place-selector-title{font-size:14px;font-weight:600;margin-bottom:8px;opacity:0.9}
+    .places-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .place-btn{padding:8px;background:#3a3650;border-radius:6px;cursor:pointer;text-align:center;font-size:12px;font-weight:600;border:2px solid transparent;transition:all 0.2s}
+    .place-btn:hover{background:#4a4660;transform:scale(1.05)}
+    .place-btn.selected{border-color:#3b82f6;background:#1e3a8a}
+    .place-btn .medal{font-size:16px;display:block;margin-bottom:2px}
+    .place-btn .label{font-size:10px;opacity:0.8}
+    
+    .express-info{margin-top:8px;padding:10px;background:rgba(245,158,11,0.1);border-radius:6px;border:1px solid rgba(245,158,11,0.3);font-size:12px;line-height:1.4;display:none}
+    .express-info.show{display:block}
+    .express-info strong{color:#f59e0b}
+    
+    /* Race Track - ПРОСТОЙ ГОРИЗОНТАЛЬНЫЙ */
+    #trackWrap{background:linear-gradient(135deg,#0f172a,#1e293b);padding:16px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.6);position:relative}
+    #trackWrap.hidden{display:none}
+    
+    #track{position:relative;width:100%;height:400px;background:linear-gradient(135deg,#1a4d2e 0%,#2d5a3d 50%,#1a4d2e 100%);border-radius:12px;overflow:hidden;box-shadow:inset 0 0 60px rgba(0,0,0,0.8);border:4px solid #1e1e1e}
+    
+    /* Горизонтальные дорожки */
+    .lane{position:absolute;width:100%;height:25%;left:0;border-bottom:3px dashed rgba(255,255,255,0.2);background:repeating-linear-gradient(90deg,transparent,transparent 30px,rgba(255,255,255,0.03) 30px,rgba(255,255,255,0.03) 60px)}
+    .lane[data-lane="1"]{top:0;border-color:rgba(93,173,226,0.4)}
+    .lane[data-lane="2"]{top:25%;border-color:rgba(251,191,36,0.4)}
+    .lane[data-lane="3"]{top:50%;border-color:rgba(16,185,129,0.4)}
+    .lane[data-lane="4"]{top:75%;border-color:rgba(168,85,247,0.4);border-bottom:none}
+    
+    .lane-number{position:absolute;left:10px;top:8px;font-size:42px;font-weight:900;z-index:100;line-height:1}
+    .lane[data-lane="1"] .lane-number{color:#5dade2;text-shadow:0 0 30px rgba(93,173,226,0.8),0 0 10px rgba(93,173,226,1),0 4px 10px rgba(0,0,0,0.9)}
+    .lane[data-lane="2"] .lane-number{color:#fbbf24;text-shadow:0 0 30px rgba(251,191,36,0.8),0 0 10px rgba(251,191,36,1),0 4px 10px rgba(0,0,0,0.9)}
+    .lane[data-lane="3"] .lane-number{color:#10b981;text-shadow:0 0 30px rgba(16,185,129,0.8),0 0 10px rgba(16,185,129,1),0 4px 10px rgba(0,0,0,0.9)}
+    .lane[data-lane="4"] .lane-number{color:#a855f7;text-shadow:0 0 30px rgba(168,85,247,0.8),0 0 10px rgba(168,85,247,1),0 4px 10px rgba(0,0,0,0.9)}
+    
+    /* Финишная линия справа */
+    .finish-line{position:absolute;right:0;top:0;width:40px;height:100%;background:repeating-linear-gradient(0deg,#000 0px,#000 20px,#fff 20px,#fff 40px);opacity:0.9;z-index:2;box-shadow:0 0 30px rgba(251,191,36,0.8)}
+    
+    /* Стартовая линия слева */
+    .start-line{position:absolute;left:60px;top:0;width:6px;height:100%;background:#fbbf24;opacity:0.9;z-index:3;box-shadow:0 0 25px rgba(251,191,36,0.9)}
+    
+    /* Роверы - горизонтальное движение */
+    .rover-runner{position:absolute;left:70px;top:50%;transform:translateY(-50%) scale(0.5);width:120px;height:120px;z-index:10;transition:left 0.03s linear;overflow:hidden}
+    .rover-img{width:100%;height:100%;object-fit:contain}
+    
+    @keyframes roverRide{
+      0%{transform:translateY(-50%) scale(0.5) translateX(0) rotate(0deg)}
+      10%{transform:translateY(-50%) scale(0.5) translateX(-1px) rotate(-1deg)}
+      20%{transform:translateY(-50%) scale(0.5) translateX(1px) rotate(1deg)}
+      30%{transform:translateY(-50%) scale(0.5) translateX(-1px) rotate(-1deg)}
+      40%{transform:translateY(-50%) scale(0.5) translateX(1px) rotate(1deg)}
+      50%{transform:translateY(-50%) scale(0.5) translateX(0) rotate(0deg)}
+      60%{transform:translateY(-50%) scale(0.5) translateX(1px) rotate(1deg)}
+      70%{transform:translateY(-50%) scale(0.5) translateX(-1px) rotate(-1deg)}
+      80%{transform:translateY(-50%) scale(0.5) translateX(1px) rotate(1deg)}
+      90%{transform:translateY(-50%) scale(0.5) translateX(-1px) rotate(-1deg)}
+      100%{transform:translateY(-50%) scale(0.5) translateX(0) rotate(0deg)}
+    }
+    
+    .rover-runner.running{animation:roverRide 0.3s infinite}
+    .rover-runner.running .rover-img{filter:drop-shadow(0 0 12px rgba(255,255,255,0.6))}
+    
+    
+    /* Results */
+    #results{background:#2d2a3e;padding:16px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+    #results.hidden{display:none}
+    .result-item{background:#3a3650;padding:12px;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+    .result-item .medal{font-size:24px}
+    .result-item .rover-name{flex:1;font-weight:600}
+    .result-item .rover-emoji{font-size:24px}
+    .result-item.winner{background:linear-gradient(135deg,#3b82f6,#2563eb);animation:winPulse 0.6s ease-out}
+    
+    @keyframes winPulse{
+      0%{transform:scale(0.95)}
+      50%{transform:scale(1.05)}
+      100%{transform:scale(1)}
+    }
+    
+    .win-message{text-align:center;padding:16px;font-size:18px;font-weight:600;margin-bottom:16px}
+    .win-message.won{color:#3b82f6;text-shadow:0 0 10px rgba(59,130,246,0.5)}
+    .win-message.lost{color:#ef4444;text-shadow:0 0 10px rgba(239,68,68,0.5)}
+    
+    /* Countdown */
+    .countdown{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:120px;font-weight:900;color:#fbbf24;text-shadow:0 0 20px rgba(251,191,36,1),0 0 40px rgba(251,191,36,0.8);z-index:100;opacity:0;pointer-events:none}
+    .countdown.show{animation:countdownPulse 1s ease-out}
+    
+    @keyframes countdownPulse{
+      0%{opacity:0;transform:translate(-50%,-50%) scale(0.5)}
+      50%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}
+      100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}
+    }
+    
+    /* Bankrupt Modal */
+    #bankruptModal{position:fixed;inset:0;background:rgba(0,0,0,0.9);display:none;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(10px)}
+    #bankruptModal.show{display:flex}
+    .bankrupt-content{background:linear-gradient(135deg,#1a1a1a,#2a2a2a);padding:32px;border-radius:16px;text-align:center;max-width:400px;border:3px solid #ef4444;box-shadow:0 0 40px rgba(239,68,68,0.5),0 8px 32px rgba(0,0,0,0.8);animation:bankruptShake 0.6s ease-out}
+    @keyframes bankruptShake{
+      0%,100%{transform:scale(1) rotate(0deg)}
+      10%{transform:scale(0.95) rotate(-2deg)}
+      20%{transform:scale(1.05) rotate(2deg)}
+      30%{transform:scale(0.98) rotate(-1deg)}
+      40%{transform:scale(1.02) rotate(1deg)}
+      50%{transform:scale(1)}
+    }
+    .bankrupt-emoji{font-size:80px;margin-bottom:16px;animation:bankruptFloat 2s ease-in-out infinite}
+    @keyframes bankruptFloat{
+      0%,100%{transform:translateY(0px) rotate(-5deg)}
+      50%{transform:translateY(-10px) rotate(5deg)}
+    }
+    .bankrupt-title{font-size:32px;font-weight:900;color:#ef4444;margin-bottom:16px;text-shadow:0 0 20px rgba(239,68,68,0.8)}
+    .bankrupt-message{font-size:18px;color:#d1d5db;margin-bottom:24px;line-height:1.5}
+    .bankrupt-message strong{color:#fbbf24}
+    .bankrupt-actions{display:flex;gap:12px;justify-content:center}
+    .bankrupt-btn{padding:14px 24px;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;border:none;transition:all 0.2s}
+    .bankrupt-btn.restart{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+    .bankrupt-btn.restart:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(16,185,129,0.4)}
+    .bankrupt-btn.quit{background:#3a3650;color:#fff}
+    .bankrupt-btn.quit:hover{background:#4a4660;transform:translateY(-2px)}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>🛵 Rover Racing</h1>
+      <div class="stats">
+        <div class="stat">Баланс: <strong id="balance">1000</strong>₽</div>
+        <div class="stat">Выигрышей: <strong id="wins">0</strong></div>
+      </div>
+    </header>
+    
+    <div id="gameArea">
+      <!-- Betting Panel -->
+      <div id="betPanel">
+        <h2 style="margin-bottom:12px">Выберите ровер и сделайте ставку</h2>
+        <div class="bet-grid" id="roverSelector">
+          <div class="bet-option" data-rover="1">
+            <div class="horse-color" style="background:#5dade2"></div>
+            <strong>🛵 Лавка</strong>
+            <small>Коэффициент: ×2.5</small>
+          </div>
+          <div class="bet-option" data-rover="2">
+            <div class="horse-color" style="background:#fbbf24"></div>
+            <strong>🛵 Яндекс</strong>
+            <small>Коэффициент: ×2.5</small>
+          </div>
+          <div class="bet-option" data-rover="3">
+            <div class="horse-color" style="background:#10b981"></div>
+            <strong>🛵 Delivery</strong>
+            <small>Коэффициент: ×2.5</small>
+          </div>
+          <div class="bet-option" data-rover="4">
+            <div class="horse-color" style="background:#a855f7"></div>
+            <strong>🛵 Самокат</strong>
+            <small>Коэффициент: ×2.5</small>
+          </div>
+        </div>
+        
+        <div class="bet-amount">
+          <label>Сумма ставки (₽)</label>
+          <div class="bet-controls">
+            <div class="bet-preset" data-amount="100">100₽</div>
+            <div class="bet-preset" data-amount="250">250₽</div>
+            <div class="bet-preset" data-amount="500">500₽</div>
+            <div class="bet-preset all-in" id="allInBtn">ALL IN 🔥</div>
+          </div>
+          <input type="number" id="betInput" value="100" min="10" step="10" readonly>
+        </div>
+        
+        <button class="express-toggle-btn" id="expressToggleBtn">
+          <span class="fire">🔥</span>
+          <span>КОНЧЕНЫЕ ЭКСПРЕССЫ</span>
+          <span class="fire">🔥</span>
+        </button>
+        
+        <div class="express-modes" id="expressModes">
+          <div class="express-mode" data-mode="degenerate">
+            <div class="title">ДЕГЕНЕРАТ</div>
+            <div class="coef">×6.25</div>
+            <div class="desc">Топ-2 места</div>
+          </div>
+          <div class="express-mode" data-mode="addict">
+            <div class="title">НАРКОМАН</div>
+            <div class="coef">×15.6</div>
+            <div class="desc">Топ-3 места</div>
+          </div>
+          <div class="express-mode" data-mode="psycho">
+            <div class="title">ПСИХОПАТ</div>
+            <div class="coef">×39.1</div>
+            <div class="desc">Все 4 места</div>
+          </div>
+        </div>
+        
+        <div class="place-selector" id="placeSelector">
+          <div class="place-selector-title">Выбери места для роверов:</div>
+          <div id="placesContainer"></div>
+        </div>
+        
+        <div class="express-info" id="expressInfo"></div>
+        
+        <button class="btn" id="startRace">Начать забег 🏁</button>
+      </div>
+      
+      <!-- Race Track -->
+      <div id="trackWrap" class="hidden">
+        <div id="track">
+          <div class="start-line"></div>
+          <div class="finish-line"></div>
+          
+          <div class="lane" data-lane="1">
+            <div class="lane-number">1</div>
+            <div class="rover-runner" id="runner1">
+              <img src="images/cutlavka.png" class="rover-img" alt="Лавка">
+            </div>
+          </div>
+          
+          <div class="lane" data-lane="2">
+            <div class="lane-number">2</div>
+            <div class="rover-runner" id="runner2">
+              <img src="images/cutyandex.png" class="rover-img" alt="Яндекс">
+            </div>
+          </div>
+          
+          <div class="lane" data-lane="3">
+            <div class="lane-number">3</div>
+            <div class="rover-runner" id="runner3">
+              <img src="images/cutdelivery.png" class="rover-img" alt="Delivery">
+            </div>
+          </div>
+          
+          <div class="lane" data-lane="4">
+            <div class="lane-number">4</div>
+            <div class="rover-runner" id="runner4">
+              <img src="images/cutsamokat.png" class="rover-img" alt="Самокат">
+            </div>
+          </div>
+          
+          <div class="countdown" id="countdown"></div>
+        </div>
+      </div>
+      
+      <!-- Results Panel -->
+      <div id="results" class="hidden">
+        <div class="win-message" id="winMessage"></div>
+        <div id="resultsList"></div>
+        <button class="btn" id="playAgain">Играть снова 🎰</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Bankrupt Modal -->
+  <div id="bankruptModal">
+    <div class="bankrupt-content">
+      <div class="bankrupt-emoji">💸</div>
+      <div class="bankrupt-title">ТЫ ВСЁ ПРОЕБАЛ!</div>
+      <div class="bankrupt-message">
+        Баланс: <strong style="color:#ef4444">0₽</strong><br>
+        Поздравляем, ты настоящий дегенерат! 🎰<br>
+        Начать заново?
+      </div>
+      <div class="bankrupt-actions">
+        <button class="bankrupt-btn restart" id="restartGame">ДОДЕП 🔄</button>
+        <button class="bankrupt-btn quit" id="quitGame">Выйти 😢</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const rovers = [
+      {id: 1, name: 'Лавка', emoji: '🛵', color: '#5dade2'},
+      {id: 2, name: 'Яндекс', emoji: '🛵', color: '#fbbf24'},
+      {id: 3, name: 'Delivery', emoji: '🛵', color: '#10b981'},
+      {id: 4, name: 'Самокат', emoji: '🛵', color: '#a855f7'}
+    ];
+
+    let balance = parseInt(localStorage.getItem('rr_balance')) || 1000;
+    let wins = parseInt(localStorage.getItem('rr_wins')) || 0;
+    let selectedRover = null;
+    let betAmount = 100;
+    let isRacing = false;
+    
+    let expressMode = null;
+    let expressPlaces = {};
+    const expressMultipliers = {
+      degenerate: 2.5,
+      addict: 2.5,
+      psycho: 2.5
+    };
+    const expressPlaceCount = {
+      degenerate: 2,
+      addict: 3,
+      psycho: 4
+    };
+    const expressTotalMultipliers = {
+      degenerate: 6.25,
+      addict: 15.625,
+      psycho: 39.0625
+    };
+
+    const $balance = document.getElementById('balance');
+    const $wins = document.getElementById('wins');
+    const $betInput = document.getElementById('betInput');
+    const $roverOptions = document.querySelectorAll('.bet-option');
+    const $betPresets = document.querySelectorAll('.bet-preset');
+    const $allInBtn = document.getElementById('allInBtn');
+    const $expressToggleBtn = document.getElementById('expressToggleBtn');
+    const $expressModes = document.getElementById('expressModes');
+    const $expressModeBtns = document.querySelectorAll('.express-mode');
+    const $placeSelector = document.getElementById('placeSelector');
+    const $placesContainer = document.getElementById('placesContainer');
+    const $expressInfo = document.getElementById('expressInfo');
+    const $startRace = document.getElementById('startRace');
+    const $betPanel = document.getElementById('betPanel');
+    const $trackWrap = document.getElementById('trackWrap');
+    const $results = document.getElementById('results');
+    const $winMessage = document.getElementById('winMessage');
+    const $resultsList = document.getElementById('resultsList');
+    const $playAgain = document.getElementById('playAgain');
+    const $bankruptModal = document.getElementById('bankruptModal');
+    const $restartGame = document.getElementById('restartGame');
+    const $quitGame = document.getElementById('quitGame');
+    const $countdown = document.getElementById('countdown');
+
+    function updateUI() {
+      $balance.textContent = balance;
+      $wins.textContent = wins;
+      localStorage.setItem('rr_balance', balance);
+      localStorage.setItem('rr_wins', wins);
+      
+      if (balance === 0) {
+        showBankruptModal();
+      }
+    }
+
+    function showBankruptModal() {
+      $bankruptModal.classList.add('show');
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 100, 50, 200, 100, 200, 100, 300]);
+      }
+    }
+
+    $expressToggleBtn.addEventListener('click', () => {
+      const isShowing = $expressModes.classList.toggle('show');
+      $expressToggleBtn.classList.toggle('active', isShowing);
+      
+      if (!isShowing) {
+        expressMode = null;
+        expressPlaces = {};
+        $expressModeBtns.forEach(btn => btn.classList.remove('active'));
+        $placeSelector.classList.remove('show');
+        $expressInfo.classList.remove('show');
+        $roverOptions.forEach(opt => opt.style.display = 'block');
+      }
+    });
+
+    $expressModeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        $expressModeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        expressMode = btn.dataset.mode;
+        expressPlaces = {};
+        selectedRover = null;
+        
+        $roverOptions.forEach(opt => {
+          opt.classList.remove('selected');
+          opt.style.display = 'none';
+        });
+        
+        renderPlaceSelector();
+        updateExpressInfo();
+      });
+    });
+
+    function renderPlaceSelector() {
+      $placeSelector.classList.add('show');
+      
+      const placeCount = expressPlaceCount[expressMode];
+      const medals = ['🥇', '��', '🥉', '4️⃣'];
+      const placeNames = ['1-е место', '2-е место', '3-е место', '4-е место'];
+      
+      let html = '';
+      for (let p = 1; p <= placeCount; p++) {
+        html += `<div style="margin-bottom:12px">`;
+        html += `<div style="font-size:12px;margin-bottom:6px;opacity:0.8">${medals[p-1]} ${placeNames[p-1]}</div>`;
+        html += `<div class="places-grid">`;
+        
+        rovers.forEach(rover => {
+          const isSelected = expressPlaces[p] === rover.id;
+          html += `
+            <div class="place-btn ${isSelected ? 'selected' : ''}" 
+                 data-place="${p}" 
+                 data-rover="${rover.id}">
+              <div class="medal">${rover.emoji}</div>
+              <div class="label">${rover.name.split(' ')[0]}</div>
+            </div>
+          `;
+        });
+        
+        html += `</div></div>`;
+      }
+      
+      $placesContainer.innerHTML = html;
+      
+      document.querySelectorAll('.place-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const place = parseInt(btn.dataset.place);
+          const roverId = parseInt(btn.dataset.rover);
+          
+          const alreadySelected = Object.values(expressPlaces).includes(roverId);
+          if (alreadySelected && expressPlaces[place] !== roverId) {
+            if (navigator.vibrate) navigator.vibrate(50);
+            return;
+          }
+          
+          if (expressPlaces[place] === roverId) {
+            delete expressPlaces[place];
+          } else {
+            expressPlaces[place] = roverId;
+          }
+          
+          renderPlaceSelector();
+          updateExpressInfo();
+        });
+      });
+    }
+
+    function updateExpressInfo() {
+      const placeCount = expressPlaceCount[expressMode];
+      const selectedCount = Object.keys(expressPlaces).length;
+      
+      if (selectedCount === 0) {
+        $expressInfo.classList.remove('show');
+        return;
+      }
+      
+      $expressInfo.classList.add('show');
+      
+      const multiplier = expressTotalMultipliers[expressMode];
+      const potentialWin = Math.floor(betAmount * multiplier);
+      
+      let text = `<strong>Выбрано: ${selectedCount}/${placeCount}</strong><br>`;
+      text += `Множитель: <strong>×${multiplier.toFixed(2)}</strong><br>`;
+      text += `Потенциальный выигрыш: <strong>${potentialWin}₽</strong>`;
+      
+      if (selectedCount < placeCount) {
+        text += `<br><span style="color:#ef4444">⚠️ Выбери все ${placeCount} места!</span>`;
+      }
+      
+      $expressInfo.innerHTML = text;
+    }
+
+    $roverOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        if (expressMode) return;
+        
+        $roverOptions.forEach(opt => opt.classList.remove('selected'));
+        option.classList.add('selected');
+        selectedRover = parseInt(option.dataset.rover);
+      });
+    });
+
+    $betPresets.forEach(preset => {
+      preset.addEventListener('click', () => {
+        if (preset === $allInBtn) return;
+        
+        const amount = parseInt(preset.dataset.amount);
+        if (amount > balance) {
+          if (navigator.vibrate) navigator.vibrate(50);
+          return;
+        }
+        
+        $betPresets.forEach(p => p.classList.remove('active'));
+        preset.classList.add('active');
+        betAmount = amount;
+        $betInput.value = amount;
+        
+        if (expressMode) updateExpressInfo();
+      });
+    });
+
+    $allInBtn.addEventListener('click', () => {
+      if (balance === 0) return;
+      
+      $betPresets.forEach(p => p.classList.remove('active'));
+      betAmount = balance;
+      $betInput.value = balance;
+      
+      if (expressMode) updateExpressInfo();
+    });
+
+    $betInput.addEventListener('click', () => {
+      $betInput.removeAttribute('readonly');
+      $betInput.select();
+    });
+
+    $betInput.addEventListener('blur', () => {
+      $betInput.setAttribute('readonly', 'readonly');
+      let val = parseInt($betInput.value);
+      if (isNaN(val) || val < 10) val = 10;
+      if (val > balance) val = balance;
+      betAmount = val;
+      $betInput.value = val;
+      
+      $betPresets.forEach(p => p.classList.remove('active'));
+      
+      if (expressMode) updateExpressInfo();
+    });
+
+    $startRace.addEventListener('click', async () => {
+      if (isRacing) return;
+      
+      if (balance <= 0) {
+        alert('Недостаточно средств!');
+        return;
+      }
+      
+      if (betAmount > balance) {
+        alert('Недостаточно средств!');
+        return;
+      }
+      
+      if (expressMode) {
+        const placeCount = expressPlaceCount[expressMode];
+        const selectedCount = Object.keys(expressPlaces).length;
+        
+        if (selectedCount < placeCount) {
+          alert(`Выбери все ${placeCount} места!`);
+          return;
+        }
+      } else {
+        if (!selectedRover) {
+          alert('Выбери ровер!');
+          return;
+        }
+      }
+      
+      balance -= betAmount;
+      updateUI();
+      
+      isRacing = true;
+      $betPanel.classList.add('hidden');
+      $trackWrap.classList.remove('hidden');
+      $results.classList.add('hidden');
+      
+      resetTrack();
+      await showCountdown();
+      const results = await runRace();
+      showResults(results);
+    });
+
+    function resetTrack() {
+      for (let i = 1; i <= 4; i++) {
+        const runner = document.getElementById(`runner${i}`);
+        runner.style.left = '70px';
+        runner.classList.remove('running');
+      }
+    }
+
+    async function showCountdown() {
+      const numbers = ['3', '2', '1', 'GO!'];
+      
+      for (const num of numbers) {
+        $countdown.textContent = num;
+        $countdown.classList.add('show');
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        $countdown.classList.remove('show');
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    async function runRace() {
+      const trackWidth = document.getElementById('track').offsetWidth;
+      const finishLine = trackWidth - 110;
+      
+      const positions = [0, 0, 0, 0];
+      const speeds = rovers.map(() => 3 + Math.random() * 2);
+      
+      const runners = rovers.map((_, i) => document.getElementById(`runner${i + 1}`));
+      runners.forEach(r => r.classList.add('running'));
+      
+      return new Promise(resolve => {
+        const interval = setInterval(() => {
+          let finished = false;
+          
+          positions.forEach((pos, i) => {
+            if (pos < finishLine) {
+              positions[i] += speeds[i] * (0.9 + Math.random() * 0.2);
+              runners[i].style.left = (70 + positions[i]) + 'px';
+            } else {
+              finished = true;
+            }
+          });
+          
+          if (finished) {
+            clearInterval(interval);
+            runners.forEach(r => r.classList.remove('running'));
+            
+            const results = positions
+              .map((pos, i) => ({ roverId: i + 1, position: pos }))
+              .sort((a, b) => b.position - a.position)
+              .map(r => r.roverId);
+            
+            resolve(results);
+          }
+        }, 30);
+      });
+    }
+
+    function showResults(results) {
+      $trackWrap.classList.add('hidden');
+      $results.classList.remove('hidden');
+      
+      const medals = ['🥇', '🥈', '🥉', '4️⃣'];
+      let html = '';
+      
+      results.forEach((roverId, index) => {
+        const rover = rovers.find(r => r.id === roverId);
+        const isWinner = (!expressMode && roverId === selectedRover) || 
+                        (expressMode && expressPlaces[index + 1] === roverId);
+        
+        html += `
+          <div class="result-item ${isWinner && !expressMode ? 'winner' : ''}">
+            <div class="medal">${medals[index]}</div>
+            <div class="rover-name">${rover.name}</div>
+            <div class="rover-emoji">${rover.emoji}</div>
+          </div>
+        `;
+      });
+      
+      $resultsList.innerHTML = html;
+      
+      let won = false;
+      let winnings = 0;
+      
+      if (expressMode) {
+        const placeCount = expressPlaceCount[expressMode];
+        let allCorrect = true;
+        
+        for (let p = 1; p <= placeCount; p++) {
+          if (expressPlaces[p] !== results[p - 1]) {
+            allCorrect = false;
+            break;
+          }
+        }
+        
+        if (allCorrect) {
+          won = true;
+          const multiplier = expressTotalMultipliers[expressMode];
+          winnings = Math.floor(betAmount * multiplier);
+          
+          const modeEmojis = {
+            degenerate: '🤡🤡',
+            addict: '💊💊💊',
+            psycho: '🔪🔪🔪🔪'
+          };
+          const modeNames = {
+            degenerate: 'ДЕГЕНЕРАТ',
+            addict: 'НАРКОМАН',
+            psycho: 'ПСИХОПАТ'
+          };
+          
+          $winMessage.className = 'win-message won';
+          $winMessage.textContent = `${modeEmojis[expressMode]} ${modeNames[expressMode]}! ВСЕ УГАДАЛ! +${winnings}₽`;
+          
+          if (navigator.vibrate) {
+            navigator.vibrate([50, 30, 50, 30, 50, 30, 100, 50, 100, 50, 200]);
+          }
+        } else {
+          $winMessage.className = 'win-message lost';
+          $winMessage.textContent = `💀 Не угадал! Экспресс сгорел -${betAmount}₽`;
+          
+          if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+          }
+        }
+      } else {
+        if (results[0] === selectedRover) {
+          won = true;
+          winnings = Math.floor(betAmount * 2.5);
+          
+          $winMessage.className = 'win-message won';
+          $winMessage.textContent = `🎉 Победа! Выигрыш: +${winnings}₽`;
+          
+          wins++;
+          
+          if (navigator.vibrate) {
+            navigator.vibrate([100, 50, 100, 50, 200]);
+          }
+        } else {
+          $winMessage.className = 'win-message lost';
+          $winMessage.textContent = `😢 Проигрыш! -${betAmount}₽`;
+          
+          if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+          }
+        }
+      }
+      
+      if (won) {
+        balance += winnings;
+        if (expressMode) wins++;
+      }
+      
+      updateUI();
+      isRacing = false;
+      
+      // Если баланс = 0, показать модальное после 5 сек
+      if (balance <= 0) {
+        setTimeout(() => {
+          showBankruptModal();
+        }, 5000);
+      }
+    }
+
+    $playAgain.addEventListener('click', () => {
+      $results.classList.add('hidden');
+      $betPanel.classList.remove('hidden');
+      selectedRover = null;
+      
+      if (!expressMode) {
+        $roverOptions.forEach(opt => opt.classList.remove('selected'));
+      }
+    });
+
+    $restartGame.addEventListener('click', () => {
+      balance = 1000;
+      wins = 0;
+      updateUI();
+      $bankruptModal.classList.remove('show');
+    });
+
+    $quitGame.addEventListener('click', () => {
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.close();
+      } else {
+        $bankruptModal.classList.remove('show');
+      }
+    });
+
+    updateUI();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sweet Dodep 🎰</title>
+<style>
+  /* Убрано: overlay и стили для 'утро' и 'вечер' */
+  body[data-theme="day"] {
+    background: radial-gradient(120vw 90vw at 60% 40%, #ffb6c1 0%, #ff69b4 40%, #b39ddb 70%, #87cefa 100%);
+  }
+  /* Убрано: тема 'вечер' */
+  body[data-theme="night"] {
+    background: radial-gradient(120vw 90vw at 60% 40%, #232946 0%, #393e6e 40%, #5f72bd 80%, #181d2b 100%);
+  }
+  body {
+    transition: background 1.2s cubic-bezier(.77,0,.18,1);
+  }
+  .theme-switcher {
+    position: fixed;
+    top: 1.2vw;
+    right: 2vw;
+    z-index: 100;
+    display: flex;
+    gap: 0.7vw;
+    background: rgba(30,30,60,0.18);
+    border-radius: 2vw;
+    box-shadow: 0 2px 12px #0002;
+    padding: 0.5vw 1vw;
+    backdrop-filter: blur(0.7vw) saturate(1.2);
+    -webkit-backdrop-filter: blur(0.7vw) saturate(1.2);
+    font-size: clamp(1rem, 2vw, 1.3rem);
+    color: #fff;
+    user-select: none;
+    align-items: center;
+    opacity: 0.93;
+  }
+  .theme-switcher button {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.2em;
+    cursor: pointer;
+    padding: 0.2em 0.7em;
+    border-radius: 1em;
+    transition: background 0.2s, color 0.2s;
+  }
+  .theme-switcher button.active {
+    background: #fff3;
+    color: #ffb347;
+    font-weight: bold;
+  }
+
+  /* Реалистичное отражение для символов */
+  .slot-symbol {
+    position: relative;
+    z-index: 1;
+  }
+  .slot-symbol-reflect {
+    position: absolute;
+    left: 0; right: 0;
+    top: 100%;
+    height: 60%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0.32;
+    filter: blur(2.5px) saturate(1.1);
+    transform: scaleY(-1);
+    background: linear-gradient(to bottom, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.01) 80%);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.01) 100%);
+    -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.01) 100%);
+    z-index: 0;
+    transition: opacity 0.3s;
+  }
+  .slot-symbol:hover .slot-symbol-reflect {
+    opacity: 0.45;
+    filter: blur(1.5px) saturate(1.2);
+  }
+  /* Магнитный курсор и эффекты наведения */
+  .magnet-hover {
+    transition: transform 0.18s cubic-bezier(.22,1.12,.62,1.01), box-shadow 0.18s;
+    will-change: transform;
+  }
+  .magnet-hover.magnet-active {
+    transform: scale(1.07) translate(var(--mx,0), var(--my,0));
+    box-shadow: 0 4px 24px 0 #fff5, 0 0 1vw #fff7;
+    z-index: 2;
+  }
+  .controls-bar {
+    /* ...существующие стили... */
+    background: linear-gradient(120deg, rgba(30,30,60,0.22) 60%, rgba(60,60,90,0.13) 100%);
+    box-shadow: 0 2px 18px 0 rgba(30,30,60,0.10), 0 0 0.5vw #fff2;
+    backdrop-filter: blur(0.7vw) saturate(1.2);
+    -webkit-backdrop-filter: blur(0.7vw) saturate(1.2);
+  }
+  .controls-bar, .controls-bar * {
+    color: #fff !important;
+    text-shadow: 0 2px 8px #0007, 0 0 2vw #fff8;
+    font-weight: 600;
+  }
+  /* Liquid glass WebGL effect for controls bar */
+  #controlsGlassWebGL {
+    position: absolute;
+    left: 0; top: 0; width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 1;
+    mix-blend-mode: lighten;
+  }
+  .controls-bar {
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+  }
+/* Lens flare effect for buttons and grid */
+.lens-flare {
+  pointer-events: none;
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  z-index: 10;
+  background: radial-gradient(ellipse 60% 30% at var(--fx,60%) var(--fy,30%), rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.08) 60%, transparent 100%);
+  opacity: 0.55;
+  transition: background 0.2s, opacity 0.2s;
+  filter: blur(2.5px) saturate(1.2);
+  mix-blend-mode: lighten;
+  pointer-events: none;
+}
+body {
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  background: radial-gradient(120vw 90vw at 60% 40%, #ffb6c1 0%, #ff69b4 40%, #b39ddb 70%, #87cefa 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  z-index: 0;
+  left: 0; top: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background: inherit;
+  filter: blur(2.8vw) saturate(1.2) brightness(1.08);
+  opacity: 0.92;
+}
+
+body {
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 15px;
+  perspective: 1500px;
+  scroll-behavior: smooth;
+}
+h1 {
+  font-size: 3rem;
+  color: #ffcc00;
+  margin: 10px 0;
+  padding: 18px 38px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.09) 100%);
+  box-shadow: 0 2px 12px #ff69b422, 0 1.5px 0 #fff8 inset;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  outline: 1.5px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(14px) saturate(1.5);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  text-shadow: 0 0 10px #ffcc00, 0 0 20px #ff69b4;
+  animation: titleGlow 2s ease-in-out infinite alternate;
+  position: relative;
+  z-index: 20;
+}
+@keyframes titleGlow {
+    from { text-shadow: 0 0 10px #ffcc00, 0 0 20px #ff69b4; }
+    to { text-shadow: 0 0 20px #ffcc00, 0 0 40px #ff69b4; }
+}
+/* --- Новый layout и стили --- */
+  .slot-symbol {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(2.2rem, 6vw, 4.5rem);
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.18), 0 0 0.5vw #fff8, 0 0 1vw #fff4;
+    border-radius: 1.2vw;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+    transition: box-shadow 0.2s;
+    box-shadow: 0 2px 12px 0 #0002, 0 0 0.5vw #fff3;
+    background: linear-gradient(120deg, #fff1 40%, #fff3 100%);
+  }
+
+  /* Блеск/свет для каждого символа */
+  .slot-symbol::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 70%;
+    height: 70%;
+    transform: translate(-50%, -50%) scale(1.1);
+    pointer-events: none;
+    border-radius: 50%;
+    background: radial-gradient(circle at 60% 35%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0.12) 38%, rgba(255,255,255,0.01) 100%);
+    opacity: 0.82;
+    filter: blur(0.5vw);
+    animation: symbol-shimmer 2.8s linear infinite;
+    z-index: 2;
+  }
+
+  @keyframes symbol-shimmer {
+    0% { opacity: 0.82; filter: blur(0.5vw); transform: translate(-50%, -50%) scale(1.1) rotate(0deg); }
+    40% { opacity: 0.95; filter: blur(0.7vw); transform: translate(-50%, -50%) scale(1.18) rotate(8deg); }
+    60% { opacity: 0.7; filter: blur(0.4vw); transform: translate(-50%, -50%) scale(1.05) rotate(-6deg); }
+    100% { opacity: 0.82; filter: blur(0.5vw); transform: translate(-50%, -50%) scale(1.1) rotate(0deg); }
+  }
+.slot-grid-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 100vw;
+  margin-bottom: clamp(2px, 0.5vw, 8px);
+  align-items: center;
+  box-sizing: border-box;
+  overflow-y: auto;
+  max-height: 62vh;
+  border-radius: 1.2vw;
+  box-shadow:
+    0 0 2.2vw 0.7vw #0002,
+    0 0 2.8vw 1vw #fff2 inset,
+    0 1.5vw 1.2vw -0.7vw #0002;
+  background: transparent;
+}
+.slot-grid {
+  position: relative !important;
+  margin: 3px !important;
+  left: 0px !important;
+  width: 836px !important;
+  padding-right: 18px !important;
+  padding-left: 35px !important;
+  padding-top: 22px !important;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: clamp(1px, 0.4vw, 7px);
+  box-shadow:
+    0 0 3vw 1.2vw #0002,
+    0 0 4vw 1.5vw #fff2,
+    0 0 6vw 2vw #ff69b422,
+    0 0 8vw 2vw #87cefa22;
+  border-radius: 1.2vw;
+  padding: clamp(4px, 1vw, 18px);
+  background: linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(224,234,255,0.18) 30%, rgba(255,182,193,0.18) 60%, rgba(135,206,250,0.16) 100%);
+  border: none;
+  outline: none;
+  backdrop-filter: blur(2vw) saturate(1.7);
+  -webkit-backdrop-filter: blur(2vw) saturate(1.7);
+  position: relative;
+  overflow: hidden;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 0.5em;
+  width: min(90vw, 80vh);
+  max-width: 98vw;
+  height: auto;
+  max-height: 60vh;
+  aspect-ratio: 6/5;
+  min-width: 220px;
+  min-height: 220px;
+  box-sizing: border-box;
+  font-size: clamp(1.2rem, 3vw, 2.5rem);
+}
+@media (max-width: 900px) {
+  .slot-grid {
+    width: 98vw;
+    height: auto;
+    aspect-ratio: 6/5;
+    padding: 1vw;
+    min-width: 0;
+    min-height: 0;
+  }
+}
+@media (max-width: 600px) {
+  .slot-grid {
+    width: 99vw;
+    height: auto;
+    aspect-ratio: 6/5;
+    padding: 0.5vw;
+    min-width: 0;
+    min-height: 0;
+  }
+}
+.status-bar {
+  box-shadow: 0 0 2vw 0.5vw #0002, 0 0 2vw 0.5vw #fff2 inset;
+  border-radius: 1.2vw;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 820px;
+  padding: 14px 12px;
+  background: linear-gradient(120deg, rgba(255,255,255,0.22) 0%, rgba(255,182,193,0.18) 40%, rgba(135,206,250,0.13) 100%);
+  font-size: 1.35rem;
+  margin: clamp(2px, 0.5vw, 8px) auto clamp(2px, 0.5vw, 8px) auto;
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  position: relative;
+  z-index: 10;
+}
+.status-bar .icon {
+  font-size: 1.5em;
+  margin-right: 0.3em;
+}
+@media (max-width: 900px) {
+  .status-bar {
+    font-size: 1.1rem;
+    padding: 10px 8px;
+  }
+}
+.controls-bar {
+  box-shadow: 0 0 2vw 0.5vw #0002, 0 0 2vw 0.5vw #fff2 inset;
+  border-radius: 1.2vw;
+  display: flex;
+  flex-direction: row;
+  gap: 18px;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 820px;
+  margin: clamp(2px, 0.5vw, 8px) auto clamp(2px, 0.5vw, 8px) auto;
+  padding: 10px 8px;
+  min-height: 54px;
+  background: linear-gradient(120deg, rgba(255,255,255,0.22) 0%, rgba(255,182,193,0.18) 40%, rgba(135,206,250,0.13) 100%);
+  box-sizing: border-box;
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+}
+.controls-bar button, .controls-bar select {
+  min-width: 70px;
+  font-size: 1.1rem;
+  border-radius: 14px;
+  padding: 10px 18px;
+  margin: 0 2px;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.spin-main {
+  font-size: 1.3rem !important;
+  border-radius: 50% !important;
+  padding: 18px 0 !important;
+  min-width: 70px;
+  min-height: 70px;
+  background: linear-gradient(135deg, #fffbe6 0%, #ffe0f7 100%);
+  color: #ff69b4;
+  box-shadow: 0 0 32px #ff69b4aa, 0 2px 8px #fff8 inset;
+  border: 2.5px solid #ff69b4cc;
+  outline: 2px solid #fff8;
+  font-weight: bold;
+  transition: box-shadow 0.2s, background 0.2s, color 0.2s;
+}
+.spin-main:hover {
+  background: linear-gradient(135deg, #ffe0f7 0%, #fffbe6 100%);
+  color: #d9006c;
+  box-shadow: 0 0 48px #ff69b4ee, 0 2px 8px #fff8 inset;
+}
+@media (max-width: 900px) {
+  .controls-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 8px 4px;
+  }
+  .controls-bar button, .controls-bar select {
+    font-size: 1rem;
+    padding: 7px 10px;
+    min-width: 54px;
+  }
+  .spin-main {
+    min-width: 54px;
+    min-height: 54px;
+    font-size: 1.1rem !important;
+    padding: 12px 0 !important;
+  }
+}
+@media (max-width: 600px) {
+  .slot-main {
+    gap: 8px;
+    padding: 1vw 0 1vw 0;
+  }
+  .controls-bar {
+     flex-wrap: wrap;
+     gap: 7px;
+     padding: 4px 2px;
+     min-width: 0;
+     overflow-x: auto;
+  }
+}
+
+/* Liquid glass animated waves overlay */
+#liquidGlassWaves {
+  position: absolute;
+  left: 0; top: 0;
+     min-width: 44px;
+     min-height: 44px;
+     font-size: 0.98rem !important;
+     padding: 8px 0 !important;
+  opacity: 0.45;
+  mix-blend-mode: lighten;
+}
+
+/* 3D Reel Animation */
+.cell.reel-spin {
+  animation: reelSpin3D 1.1s cubic-bezier(.4,2,.6,1);
+  z-index: 2;
+}
+@keyframes reelSpin3D {
+  0% { transform: rotateX(0deg) scale(1); filter: brightness(1); }
+  30% { transform: rotateX(180deg) scale(1.1); filter: brightness(1.2); }
+  60% { transform: rotateX(360deg) scale(1); filter: brightness(1.1); }
+  100% { transform: rotateX(360deg) scale(1); filter: brightness(1); }
+}
+
+/* Animated background particles (coins/sparkles) */
+.bg-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50%;
+  opacity: 0.7;
+}
+@keyframes bgParticleMove {
+  0% { opacity: 0; transform: translateY(-30px) scale(0.7) rotate(0deg); }
+  10% { opacity: 0.7; }
+  80% { opacity: 0.7; }
+  100% { opacity: 0; transform: translateY(100vh) scale(1.2) rotate(360deg); }
+}
+
+/* Microanimations for buttons (pulse, bounce) */
+button.micro-pulse {
+  animation: microPulse 0.7s cubic-bezier(.4,2,.6,1);
+}
+@keyframes microPulse {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.13) rotate(-2deg); }
+  60% { transform: scale(0.97) rotate(2deg); }
+  100% { transform: scale(1); }
+}
+button.micro-bounce {
+  animation: microBounce 0.5s cubic-bezier(.4,2,.6,1);
+}
+@keyframes microBounce {
+  0% { transform: translateY(0); }
+  30% { transform: translateY(-8px); }
+  60% { transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
+
+.shake {
+  animation: shakeGrid 0.7s cubic-bezier(.36,.07,.19,.97) both;
+}
+@keyframes shakeGrid {
+  10%, 90% { transform: rotateX(8deg) rotateY(-8deg) scale(1.03) translateX(-2px); }
+  20%, 80% { transform: rotateX(8deg) rotateY(-8deg) scale(1.03) translateX(4px); }
+  30%, 50%, 70% { transform: rotateX(8deg) rotateY(-8deg) scale(1.03) translateX(-8px); }
+  40%, 60% { transform: rotateX(8deg) rotateY(-8deg) scale(1.03) translateX(8px); }
+  100% { transform: rotateX(8deg) rotateY(-8deg) scale(1.03) translateX(0); }
+}
+.cell {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 50px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1));
+    border-radius: 15px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.4);
+    transition: transform 0.5s cubic-bezier(.4,2,.6,1), box-shadow 0.5s;
+    perspective: 400px;
+    will-change: transform;
+}
+.cell.appear {
+  animation: dropIn3D 0.7s cubic-bezier(.4,2,.6,1);
+  z-index: 2;
+}
+@keyframes dropIn3D {
+  0% { transform: translateY(-200px) rotateX(90deg) rotateY(90deg) scale(0.5); opacity: 0; }
+  40% { transform: translateY(20px) rotateX(-10deg) rotateY(-10deg) scale(1.1); opacity: 1; }
+  100% { transform: translateY(0) rotateX(0) rotateY(0) scale(1); }
+}
+.cell.win {
+  animation: winPop3D 0.9s cubic-bezier(.4,2,.6,1);
+  box-shadow: 0 0 20px #ffd700, 0 0 40px #ff69b4, inset 0 0 10px #fff;
+  z-index: 3;
+}
+@keyframes winPop3D {
+  0% { transform: scale(1) rotateY(0) rotateX(0); }
+  30% { transform: scale(1.25) rotateY(180deg) rotateX(20deg); }
+  60% { transform: scale(1.1) rotateY(270deg) rotateX(-10deg); }
+  100% { transform: scale(1) rotateY(360deg) rotateX(0); }
+}
+.cell.remove {
+    animation: removeFade 0.5s ease forwards;
+}
+@keyframes removeFade {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.5) rotateX(90deg); }
+}
+.particle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    animation: particleBurst 1s ease-out forwards;
+}
+@keyframes particleBurst {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(3) translate(var(--dx), var(--dy)); opacity: 0; }
+}
+#controls {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+button, select {
+  padding: 12px 25px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  border: 1.5px solid rgba(255,255,255,0.35);
+  border-radius: 30px;
+  background: linear-gradient(120deg, rgba(255,255,255,0.28) 0%, rgba(255,182,193,0.18) 40%, rgba(135,206,250,0.13) 100%);
+  box-shadow: 0 2px 12px #fff6 inset, 0 0 0 0.5px #fff2, 0 0 18px #ff69b433, 0 0 28px #87cefa33, 0 0 60px 10px #fff2 inset;
+  border: 2px solid rgba(255,255,255,0.32);
+  color: #ff69b4;
+  box-shadow: 0 2px 8px #fff8 inset, 0 0 0 0.5px #fff4;
+  transition: transform 0.3s, box-shadow 0.3s, background 0.3s, filter 0.2s;
+  outline: none;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  backdrop-filter: blur(14px) saturate(1.7);
+  -webkit-backdrop-filter: blur(14px) saturate(1.7);
+  background-clip: padding-box;
+  animation: btnPress 0.18s cubic-bezier(.4,2,.6,1);
+}
+button::before, select::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0.09) 100%);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
+}
+button::after, select::after {
+  content: "";
+  position: absolute;
+  left: 10%; top: 8%;
+  width: 80%; height: 30%;
+  border-radius: 50%;
+  background: linear-gradient(120deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.08) 100%);
+  filter: blur(6px);
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 1;
+}
+@keyframes btnPress {
+  0% { transform: scale(1) rotate(0); }
+  60% { transform: scale(0.93) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+button.splash::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 0; height: 0;
+  background: rgba(255,255,255,0.4);
+  border-radius: 50%;
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+  animation: btnSplash 0.5s linear;
+  z-index: 2;
+}
+@keyframes btnSplash {
+  0% { width: 0; height: 0; opacity: 0.7; }
+  80% { width: 180px; height: 180px; opacity: 0.3; }
+  100% { width: 200px; height: 200px; opacity: 0; }
+}
+button:hover, select:hover {
+  transform: scale(1.07) rotate(2deg);
+  box-shadow: 0 8px 24px #ff69b455, 0 2px 8px #fff8 inset, 0 0 0 1.5px #fff6;
+  background: linear-gradient(135deg, rgba(255,255,255,0.32) 0%, rgba(255,182,193,0.18) 100%);
+  filter: brightness(1.13) drop-shadow(0 0 12px #fff3);
+}
+#message {
+  box-shadow: 0 2px 18px 0 rgba(31,38,135,0.10);
+  border-radius: 0.7vw;
+    font-size: 1.5rem;
+    margin: 10px 0;
+    text-shadow: 1px 1px 2px #000;
+    animation: messageFade 1s ease;
+}
+@keyframes messageFade {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+#paytableModal, #settingsModal {
+  background: rgba(255,255,255,0.20);
+  backdrop-filter: blur(10px) saturate(1.3);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.18), 0 2px 24px 0 rgba(255,105,180,0.10);
+  border: 1.5px solid rgba(255,255,255,0.18);
+  outline: 1.5px solid rgba(255,255,255,0.10);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 30px;
+  display: none;
+  z-index: 1000;
+  max-width: 95vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: modal-pop 0.5s ease;
+  scroll-behavior: smooth;
+  transition: background 0.3s;
+}
+
+#settingsModal::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(120deg, rgba(255,255,255,0.13) 0%, rgba(255,182,193,0.10) 40%, rgba(135,206,250,0.10) 100%);
+  animation: glassColorAnim 7s linear infinite alternate;
+}
+
+@keyframes glassColorAnim {
+  0% { filter: hue-rotate(0deg) brightness(1.08); }
+  100% { filter: hue-rotate(40deg) brightness(1.18); }
+  font-size: clamp(1rem, 2vw, 1.3rem); 
+}
+@keyframes modal-pop {
+    from { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+#paytableModal table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+}
+#paytableModal th, #paytableModal td {
+    padding: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.modal-close {
+    background: #ff69b4;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    margin-top: 20px;
+    cursor: pointer;
+}
+.modal-close:hover {
+    background: #ffcc00;
+}
+@media (max-width: 768px) {
+  #grid { grid-template-columns: repeat(6, minmax(38px, 1fr)); grid-template-rows: repeat(5, minmax(38px, 1fr)); gap: 4px; }
+  .cell { width: 38px; height: 38px; font-size: 28px; }
+  button, select { padding: 7px 10px; font-size: 0.95rem; }
+  .status-bar { font-size: 1rem; padding: 8px 5px; }
+  h1 { font-size: 1.7rem; }
+}
+</style>
+</style>
+<!-- glsl-canvas for WebGL liquid glass -->
+<script src="https://cdn.jsdelivr.net/npm/glsl-canvas-js@2.4.7/dist/glsl-canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="theme-switcher">
+    <button data-theme="day" title="День">🌤️</button>
+    <button data-theme="night" title="Ночь">🌙</button>
+  </div>
+
+<!-- Slot-style Preloader -->
+<div id="slotPreloader" style="position:fixed;z-index:5000;left:0;top:0;width:100vw;height:100vh;background:radial-gradient(circle at center,#ff69b4 0%,#ffb6c1 50%,#87cefa 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;transition:opacity 0.7s;">
+  <div style="display:flex;align-items:center;gap:18px;">
+    <div class="preloader-reel">
+      <span>🍬</span>
+      <span>🍉</span>
+      <span>🍇</span>
+      <span>🍎</span>
+      <span>🍫</span>
+      <span>❤️</span>
+    </div>
+    <div class="preloader-reel">
+      <span>🍇</span>
+      <span>🍬</span>
+      <span>🍑</span>
+      <span>🍌</span>
+      <span>🍭</span>
+      <span>🍉</span>
+    </div>
+    <div class="preloader-reel">
+      <span>🍎</span>
+      <span>🍫</span>
+      <span>🍬</span>
+      <span>🍇</span>
+      <span>🍑</span>
+      <span>🍭</span>
+    </div>
+  </div>
+  <div style="margin-top:32px;font-size:2.1rem;color:#fff;text-shadow:0 0 18px #ff69b4,0 0 30px #ffcc00;letter-spacing:0.08em;">Загрузка...</div>
+</div>
+<canvas id="bg-anim" style="position:fixed;z-index:0;top:0;left:0;width:100vw;height:100vh;pointer-events:none;"></canvas>
+<div class="slot-main">
+  <div class="slot-header">
+    <h1>Sweet Dodep 🎰</h1>
+  </div>
+  <div class="slot-grid-wrap">
+  <div id="grid" class="slot-grid" style="position:relative;">
+      <canvas id="liquidGlassWaves" style="position:absolute;left:0;top:0;width:100%;height:100%;z-index:2;pointer-events:auto;"></canvas>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div id="balance">Баланс: <span id="playerBalance">1000</span> монет</div>
+    <div id="winDisplay">Выигрыш: <span id="currentWin">0</span></div>
+    <div id="freeSpins">Free Spins: <span id="fsCount">0</span></div>
+    <div id="anteStatus">Ante: Off</div>
+    <div id="autoSpinIndicator" style="position:absolute;right:10px;top:10px;font-size:1.1em;display:none;">🔁 Автоспин</div>
+  </div>
+  <div class="controls-bar">
+  <glsl-canvas id="controlsGlassWebGL" style=""></glsl-canvas>
+    <button onclick="toggleAnte()">Ante Bet</button>
+    <select id="betSelect" onchange="changeBet()">
+        <option value="10">10 coins</option>
+        <option value="20">20 coins</option>
+        <option value="50">50 coins</option>
+        <option value="100">100 coins</option>
+    </select>
+    <button id="spinBtn" class="spin-main" onclick="spin(false)">Spin</button>
+    <button onclick="toggleAutoSpin()">Auto Spin</button>
+    <button onclick="buyBonus()">Buy Bonus</button>
+    <button onclick="showPaytable()">Paytable</button>
+    <button onclick="showSettings()">Settings</button>
+  </div>
+</div>
+
+<div id="tutorialOverlay" style="display:none;position:fixed;z-index:3000;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);align-items:center;justify-content:center;flex-direction:column;"></div>
+<div id="bigWinPanel" style="display:none;position:fixed;z-index:2000;left:0;top:0;width:100vw;height:100vh;pointer-events:none;align-items:center;justify-content:center;"></div>
+<div id="message">Добро пожаловать в Sweet Dodep!</div>
+
+
+
+<div id="paytableModal">
+    <h2>Paytable</h2>
+    <table>
+        <tr><th>Symbol</th><th>8-9</th><th>10-11</th><th>12+</th></tr>
+        <tr><td>🍌 Banana</td><td>0.25x</td><td>0.75x</td><td>2x</td></tr>
+        <tr><td>🍇 Grapes</td><td>0.4x</td><td>0.9x</td><td>4x</td></tr>
+        <tr><td>🍉 Watermelon</td><td>0.5x</td><td>1x</td><td>5x</td></tr>
+        <tr><td>🍑 Plum</td><td>0.8x</td><td>1.2x</td><td>8x</td></tr>
+        <tr><td>🍎 Apple</td><td>1x</td><td>1.5x</td><td>10x</td></tr>
+        <tr><td>🍬 Blue Candy</td><td>1.5x</td><td>2x</td><td>12x</td></tr>
+        <tr><td>🍫 Green Candy</td><td>2.5x</td><td>10x</td><td>25x</td></tr>
+        <tr><td>❤️ Red Heart</td><td>10x</td><td>25x</td><td>50x</td></tr>
+        <tr><td>🍭 Scatter</td><td colspan="3">3x (4), 5x (5), 100x (6); Triggers 10 FS</td></tr>
+        <tr><td>💣 Multiplier</td><td colspan="3">2x-100x in FS, additive</td></tr>
+    </table>
+    <button class="modal-close" onclick="closePaytable()">Close</button>
+</div>
+
+<div id="settingsModal">
+  <glsl-canvas id="settingsGlassWebGL" style="position:absolute;left:0;top:0;width:100%;height:100%;z-index:-1;pointer-events:none;"></glsl-canvas>
+  <div id="settingsModalHeader" style="cursor:move;user-select:none;padding-bottom:10px;"><h2 style="margin:0;">Settings</h2></div>
+    <label><input type="checkbox" id="soundToggle" checked> Sound On</label><br>
+    <label><input type="checkbox" id="turboToggle"> Turbo Mode</label><br>
+    <button class="modal-close" onclick="closeSettings()">Close</button>
+</div>
+
+<audio id="spinSound" src="https://freesound.org/data/previews/464/464628_10198910-lq.mp3"></audio>
+<audio id="winSound" src="https://freesound.org/data/previews/620/620132_13659862-lq.mp3"></audio>
+<audio id="bigWinSound" src="https://freesound.org/data/previews/511/511484_28867-lq.mp3"></audio>
+
+<script>
+  // Анимированная смена времени суток (фон)
+  const themeBtns = document.querySelectorAll('.theme-switcher button');
+  function setTheme(theme) {
+    document.body.setAttribute('data-theme', theme);
+    themeBtns.forEach(btn => btn.classList.toggle('active', btn.dataset.theme === theme));
+    localStorage.setItem('slotTheme', theme);
+  }
+  themeBtns.forEach(btn => {
+    btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+  });
+  // Только ручной выбор темы
+  setTheme(localStorage.getItem('slotTheme') || 'day');
+  // Добавить отражение для каждого символа
+  document.querySelectorAll('.slot-symbol').forEach(sym => {
+    if (!sym.querySelector('.slot-symbol-reflect')) {
+      const reflect = document.createElement('div');
+      reflect.className = 'slot-symbol-reflect';
+      // Клонируем только текст/эмодзи символа
+      reflect.innerHTML = sym.textContent;
+      sym.appendChild(reflect);
+    }
+  });
+  // Магнитный курсор для кнопок и символов
+  function enableMagnetHover(selector, strength = 22) {
+    document.querySelectorAll(selector).forEach(el => {
+      el.classList.add('magnet-hover');
+      el.addEventListener('mousemove', e => {
+        const rect = el.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width/2;
+        const y = e.clientY - rect.top - rect.height/2;
+        el.style.setProperty('--mx', (x/strength).toFixed(1)+'px');
+        el.style.setProperty('--my', (y/strength).toFixed(1)+'px');
+        el.classList.add('magnet-active');
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.setProperty('--mx','0px');
+        el.style.setProperty('--my','0px');
+        el.classList.remove('magnet-active');
+      });
+    });
+  }
+  // Применить к основным кнопкам и символам
+  enableMagnetHover('.controls-bar button, .controls-bar .slot-btn, .slot-symbol', 18);
+  // Liquid glass effect for controls bar
+  const controlsBar = document.querySelector('.controls-bar');
+  if (controlsBar && !document.getElementById('controlsGlassWebGL')) {
+    const glsl = document.createElement('glsl-canvas');
+    glsl.id = 'controlsGlassWebGL';
+    glsl.setAttribute('data-fragment', document.getElementById('settingsGlassWebGL').getAttribute('data-fragment'));
+    glsl.setAttribute('resize', 'true');
+    glsl.style.position = 'absolute';
+    glsl.style.left = '0';
+    glsl.style.top = '0';
+    glsl.style.width = '100%';
+    glsl.style.height = '100%';
+    glsl.style.zIndex = '0';
+    glsl.style.pointerEvents = 'none';
+    glsl.style.borderRadius = 'inherit';
+    controlsBar.prepend(glsl);
+  }
+// --- Spin по пробелу ---
+
+// --- Drag-n-drop для settingsModal ---
+const settingsModal = document.getElementById('settingsModal');
+const settingsHeader = document.getElementById('settingsModalHeader');
+let dragOffsetX = 0, dragOffsetY = 0, dragging = false;
+if (settingsHeader && settingsModal) {
+  settingsHeader.addEventListener('mousedown', function(e) {
+    dragging = true;
+    dragOffsetX = e.clientX - settingsModal.offsetLeft;
+    dragOffsetY = e.clientY - settingsModal.offsetTop;
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    let x = e.clientX - dragOffsetX;
+    let y = e.clientY - dragOffsetY;
+    settingsModal.style.left = x + 'px';
+    settingsModal.style.top = y + 'px';
+    settingsModal.style.transform = 'none';
+  });
+  document.addEventListener('mouseup', function() {
+    dragging = false;
+    document.body.style.userSelect = '';
+  });
+}
+
+// --- WebGL liquid glass для settingsModal ---
+const glsl = document.getElementById('settingsGlassWebGL');
+if (glsl) {
+  glsl.setAttribute('data-fragment', `
+precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+
+// Усиленные цветные волны
+float waves(vec2 uv, float t) {
+  float w = 0.0;
+  w += sin(uv.x*8.0 + t*1.2)*0.16;
+  w += cos(uv.y*7.0 - t*1.1)*0.13;
+  w += sin(uv.x*12.0 - uv.y*6.0 + t*0.7)*0.09;
+  w += sin(uv.x*18.0 + uv.y*8.0 + t*1.7)*0.07;
+  return w;
+}
+
+void main() {
+  vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+  float t = u_time;
+  // Liquid refraction (амплитуда выше)
+  float w = waves(uv, t);
+  vec3 base = mix(vec3(1.0,0.95,1.0), vec3(0.7,0.85,1.0), uv.y + w*0.7);
+  // Яркие цветные переливы
+  float hue = 0.55 + 0.28*sin(t+uv.x*3.0);
+  float sat = 0.32 + 0.22*cos(t*0.7+uv.y*2.0);
+  float val = 0.98 + 0.13*sin(t*0.9-uv.x*2.0);
+  vec3 color = base + vec3(hue,sat,0.22)*w*1.1;
+  // Яркий flare
+  float flare = smoothstep(0.68,1.0,1.0-length(uv-0.5))*0.32;
+  color += flare;
+  // Глубина и прозрачность
+  float alpha = 0.48 + 0.32*w + 0.18*flare;
+  gl_FragColor = vec4(color, alpha);
+}
+`);
+  glsl.setAttribute('autoplay', 'true');
+  glsl.setAttribute('loop', 'true');
+}
+// Анимация волн и рефракции под модалкой
+
+window.addEventListener('keydown', function(e) {
+  if ((e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar') && !e.repeat) {
+    const spinBtn = document.getElementById('spinBtn');
+    if (spinBtn && !spinBtn.disabled) {
+      spinBtn.click();
+      e.preventDefault();
+    }
+  }
+});
+// --- Liquid Glass Waves Animation with Refraction ---
+function startLiquidGlassWaves() {
+  const grid = document.getElementById('grid');
+  let canvas = document.getElementById('liquidGlassWaves');
+  if (!canvas || !grid) return;
+  // Ripple state
+  let ripples = [];
+  function addRipple(x, y) {
+    ripples.push({x, y, r: 0, alpha: 0.32, t: 0});
+  }
+  function handleRipple(e) {
+    let px, py;
+    if (e.touches && e.touches.length) {
+      px = e.touches[0].clientX;
+      py = e.touches[0].clientY;
+    } else {
+      px = e.clientX;
+      py = e.clientY;
+    }
+    if (!gridRect) updateGridRect();
+    let x = px - gridRect.left;
+    let y = py - gridRect.top;
+    addRipple(x, y);
+  }
+  grid.addEventListener('mousedown', handleRipple);
+  grid.addEventListener('touchstart', handleRipple, {passive:true});
+  function resizeWaves() {
+    canvas.width = grid.offsetWidth;
+    canvas.height = grid.offsetHeight;
+    canvas.style.width = grid.offsetWidth + 'px';
+    canvas.style.height = grid.offsetHeight + 'px';
+    canvas.style.left = 0;
+    canvas.style.top = 0;
+  }
+  resizeWaves();
+  window.addEventListener('resize', resizeWaves);
+  let t = 0;
+  // Parallax state
+  let parallax = { x: 0, y: 0, tx: 0, ty: 0 };
+  let gridRect = null;
+  function updateGridRect() {
+    gridRect = grid.getBoundingClientRect();
+  }
+  updateGridRect();
+  window.addEventListener('resize', updateGridRect);
+  // Mouse/touch parallax
+  function handleParallax(e) {
+    let px, py;
+    if (e.touches && e.touches.length) {
+      px = e.touches[0].clientX;
+      py = e.touches[0].clientY;
+    } else {
+      px = e.clientX;
+      py = e.clientY;
+    }
+    if (!gridRect) updateGridRect();
+    // Relative to grid center
+    let cx = gridRect.left + gridRect.width/2;
+    let cy = gridRect.top + gridRect.height/2;
+    let dx = (px - cx) / (gridRect.width/2);
+    let dy = (py - cy) / (gridRect.height/2);
+    parallax.tx = Math.max(-1, Math.min(1, dx));
+    parallax.ty = Math.max(-1, Math.min(1, dy));
+  }
+  function resetParallax() {
+    parallax.tx = 0;
+    parallax.ty = 0;
+  }
+  grid.addEventListener('mousemove', handleParallax);
+  grid.addEventListener('touchmove', handleParallax, {passive:true});
+  grid.addEventListener('mouseleave', resetParallax);
+  grid.addEventListener('touchend', resetParallax);
+  const ctx = canvas.getContext('2d');
+  // Для эффекта рефракции: временный offscreen canvas
+  let off = document.createElement('canvas');
+  function drawWaves() {
+    // Снимок grid
+    off.width = canvas.width;
+    off.height = canvas.height;
+    let offCtx = off.getContext('2d');
+    offCtx.clearRect(0,0,off.width,off.height);
+    // Рисуем DOM grid в offscreen (символы)
+    Array.from(grid.children).forEach(el => {
+      if (el.classList && el.classList.contains('cell')) {
+        let rect = el.getBoundingClientRect();
+        let gridRect = grid.getBoundingClientRect();
+        let x = rect.left - gridRect.left;
+        let y = rect.top - gridRect.top;
+        offCtx.save();
+        offCtx.font = window.getComputedStyle(el).font;
+        offCtx.font = window.getComputedStyle(el).fontSize + ' ' + window.getComputedStyle(el).fontFamily;
+        offCtx.textAlign = 'center';
+        offCtx.textBaseline = 'middle';
+        offCtx.globalAlpha = 1;
+        offCtx.fillText(el.textContent, x + el.offsetWidth/2, y + el.offsetHeight/2);
+        offCtx.restore();
+      }
+    });
+    // Плавное движение параллакса
+    parallax.x += (parallax.tx - parallax.x) * 0.08;
+    parallax.y += (parallax.ty - parallax.y) * 0.08;
+    // Волны для рефракции
+    let image = offCtx.getImageData(0,0,off.width,off.height);
+    let d = image.data;
+    let w = off.width, h = off.height;
+    // Параметры волн с учетом параллакса
+    let amp = 7 + parallax.y * 7;
+    let freq = 0.045 + parallax.x * 0.012;
+    let phase = t*1.2 + parallax.x * 1.2;
+    for (let y = 0; y < h; y++) {
+      let shift = Math.round(Math.sin(y*freq + phase) * amp);
+      for (let x = w-1; x >= 0; x--) {
+        let src = ((y*w + x) << 2);
+        let dst = ((y*w + ((x+shift+w)%w)) << 2);
+        d[dst] = d[src];
+        d[dst+1] = d[src+1];
+        d[dst+2] = d[src+2];
+        d[dst+3] = d[src+3];
+      }
+    }
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.putImageData(image,0,0);
+    // Поверх — световые волны
+    for (let i = 0; i < 2; i++) {
+      ctx.save();
+      ctx.globalAlpha = 0.18 + 0.08 * i;
+      ctx.beginPath();
+      for (let x = 0; x <= canvas.width; x += 2) {
+        // Параллакс для волн: смещение и наклон
+        let y = canvas.height/2
+          + Math.sin((x/80) + t*0.7 + i*1.2 + parallax.x*1.5) * (18 + 8*i + parallax.y*10)
+          + Math.cos((x/40) - t*0.9 - i + parallax.y*1.2) * (7 + 4*i + parallax.x*6)
+          + parallax.y * 12;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fillStyle = i === 0 ? 'rgba(255,255,255,0.45)' : 'rgba(135,206,250,0.22)';
+      ctx.filter = 'blur(2.5px)';
+      ctx.fill();
+      ctx.restore();
+    }
+    // Ripple effect
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      let ripple = ripples[i];
+      ripple.t += 1;
+      ripple.r += 2.5 + ripple.t * 0.18;
+      ripple.alpha *= 0.97;
+      if (ripple.alpha < 0.03) { ripples.splice(i, 1); continue; }
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ripple.x, ripple.y, ripple.r, 0, 2*Math.PI);
+      ctx.strokeStyle = `rgba(173,216,230,${ripple.alpha})`;
+      ctx.lineWidth = 2.5 + Math.sin(ripple.t*0.13)*1.2;
+      ctx.shadowColor = '#fff';
+      ctx.shadowBlur = 8;
+      ctx.globalAlpha = ripple.alpha;
+      ctx.stroke();
+      ctx.restore();
+    }
+    t += 0.018;
+    requestAnimationFrame(drawWaves);
+  }
+  drawWaves();
+}
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(startLiquidGlassWaves, 100);
+});
+// --- Preloader logic ---
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const preloader = document.getElementById('slotPreloader');
+    if (preloader) {
+      preloader.style.opacity = '0';
+      setTimeout(() => preloader.style.display = 'none', 700);
+    }
+  }, 1200); // Show at least 1.2s for effect
+});
+// --- Туториал ---
+function showTutorial() {
+  const overlay = document.getElementById('tutorialOverlay');
+  overlay.innerHTML = `<div style="background:rgba(255,255,255,0.13);border-radius:18px;padding:32px 28px;max-width:90vw;color:#fff;text-align:center;box-shadow:0 0 40px #ff69b4;backdrop-filter:blur(6px);">
+    <h2 style='color:#ffd700;text-shadow:0 0 10px #ff69b4;'>Добро пожаловать!</h2>
+    <div style='margin:18px 0 10px 0;'>
+      <b>1.</b> <span style='background:#ff69b4;padding:2px 8px;border-radius:8px;'>Spin</span> — вращайте барабаны!<br>
+      <b>2.</b> <span style='background:#ffcc00;padding:2px 8px;border-radius:8px;'>Buy Bonus</span> — купите бонус-игру.<br>
+      <b>3.</b> <span style='background:#87cefa;padding:2px 8px;border-radius:8px;'>Auto Spin</span> — включите автоспин.<br>
+      <b>4.</b> <span style='background:#fff;padding:2px 8px;border-radius:8px;color:#ff69b4;'>Paytable</span> — смотрите выплаты.<br>
+      <b>5.</b> <span style='background:#fff;padding:2px 8px;border-radius:8px;color:#ff69b4;'>Settings</span> — настройте звук и режим.<br>
+    </div>
+    <div style='margin:10px 0 18px 0;'>
+      <span style='background:#fff;padding:2px 8px;border-radius:8px;color:#ff69b4;'>Grid</span> — здесь появляются символы и выигрыши.<br>
+    </div>
+    <button onclick="hideTutorial()" style="margin-top:10px;padding:10px 30px;font-size:1.2rem;border-radius:20px;background:linear-gradient(135deg,#ffcc00,#ff69b4);color:#fff;border:none;box-shadow:0 2px 8px #0003;cursor:pointer;">Понятно!</button>
+  </div>`;
+  overlay.style.display = 'flex';
+}
+function hideTutorial() {
+  document.getElementById('tutorialOverlay').style.display = 'none';
+}
+// Показывать туториал только при первом запуске
+if (!localStorage.getItem('slot_tutorial_shown')) {
+  setTimeout(showTutorial, 800);
+  localStorage.setItem('slot_tutorial_shown', '1');
+}
+// --- Big Win Panel ---
+function showBigWin(amount) {
+  const panel = document.getElementById('bigWinPanel');
+  panel.innerHTML = `<div class="bigwin-anim">
+    <span class="bigwin-title">BIG WIN!</span><br>
+    <span class="bigwin-amount">+${amount} монет</span>
+  </div>`;
+  panel.style.display = 'flex';
+  setTimeout(()=>panel.style.display='none', 2200);
+}
+const bigWinStyle = document.createElement('style');
+bigWinStyle.innerHTML = `
+  #bigWinPanel {
+    background: radial-gradient(circle at center, rgba(255,255,255,0.10) 0%, rgba(255,182,193,0.18) 60%, rgba(135,206,250,0.13) 100%);
+    animation: bigwin-bg 2s;
+  }
+  @keyframes bigwin-bg {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .bigwin-anim {
+    display: inline-block;
+    padding: 40px 60px;
+    border-radius: 30px;
+    background: rgba(255,255,255,0.18);
+    box-shadow: 0 0 60px #ffd70099, 0 0 120px #ff69b4aa;
+    border: 2.5px solid rgba(255,255,255,0.25);
+    text-align: center;
+    animation: bigwin-pop 2s cubic-bezier(.4,2,.6,1);
+    backdrop-filter: blur(10px) saturate(1.5);
+    -webkit-backdrop-filter: blur(10px) saturate(1.5);
+  }
+  .bigwin-title {
+    font-size: 3.5rem;
+    color: #ffd700;
+    text-shadow: 0 0 30px #ff69b4, 0 0 60px #fff;
+    letter-spacing: 0.1em;
+    font-weight: bold;
+    animation: bigwin-title 1.2s cubic-bezier(.4,2,.6,1);
+    display: block;
+  }
+  .bigwin-amount {
+      gap: clamp(1px, 0.4vw, 7px); /* Original line retained for context */
+      margin: auto;
+    color: #fff;
+    text-shadow: 0 0 10px #ffd700, 0 0 20px #ff69b4;
+    font-weight: bold;
+    display: block;
+    margin-top: 10px;
+    animation: bigwin-amount 1.2s cubic-bezier(.4,2,.6,1);
+  }
+  @keyframes bigwin-pop {
+    0% { transform: scale(0.7) rotate(-10deg); opacity: 0; }
+    20% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+    60% { transform: scale(1) rotate(-2deg); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  @keyframes bigwin-title {
+    0% { letter-spacing: 0.5em; opacity: 0; }
+    40% { letter-spacing: 0.15em; opacity: 1; }
+    100% { letter-spacing: 0.1em; opacity: 1; }
+  }
+  @keyframes bigwin-amount {
+    0% { opacity: 0; transform: scale(0.7); }
+    40% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+`;
+document.head.appendChild(bigWinStyle);
+// Микроанимация всплеска и пульса/броска на кнопках
+document.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    btn.classList.remove('splash', 'micro-pulse', 'micro-bounce');
+    void btn.offsetWidth;
+    btn.classList.add('splash');
+    // Pulse for main action buttons
+    if (btn.textContent.match(/spin|спин|buy|бонус/i)) {
+      btn.classList.add('micro-pulse');
+      setTimeout(()=>btn.classList.remove('micro-pulse'), 700);
+    } else {
+      btn.classList.add('micro-bounce');
+      setTimeout(()=>btn.classList.remove('micro-bounce'), 500);
+    }
+    setTimeout(()=>btn.classList.remove('splash'), 500);
+  });
+});
+// --- Анимированный фон: облака, световые круги и частицы ---
+const bgCanvas = document.getElementById('bg-anim');
+const ctx = bgCanvas.getContext('2d');
+let clouds = [], lights = [], bgParticles = [];
+function resizeBg() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeBg);
+resizeBg();
+// Генерируем облака
+for (let i = 0; i < 7; i++) {
+  clouds.push({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight * 0.5,
+    r: 60 + Math.random() * 80,
+    dx: 0.2 + Math.random() * 0.3,
+    alpha: 0.12 + Math.random() * 0.08
+  });
+}
+// Световые круги
+for (let i = 0; i < 5; i++) {
+  lights.push({
+    x: Math.random() * window.innerWidth,
+    y: Math.random() * window.innerHeight,
+    r: 80 + Math.random() * 120,
+    dx: 0.1 + Math.random() * 0.2,
+    dy: 0.05 + Math.random() * 0.1,
+    alpha: 0.08 + Math.random() * 0.07,
+    hue: 200 + Math.random() * 100
+  });
+}
+
+function drawBg() {
+  ctx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+  // Световые круги
+  for (const l of lights) {
+    const grad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.r);
+    grad.addColorStop(0, `hsla(${l.hue},90%,80%,${l.alpha})`);
+    grad.addColorStop(1, 'transparent');
+    ctx.beginPath(); ctx.arc(l.x, l.y, l.r, 0, 2*Math.PI);
+    ctx.fillStyle = grad;
+    ctx.fill();
+    l.x += l.dx; l.y += l.dy;
+    if (l.x > bgCanvas.width + l.r) l.x = -l.r;
+    if (l.y > bgCanvas.height + l.r) l.y = -l.r;
+  }
+  // Облака
+  for (const c of clouds) {
+    ctx.save();
+    ctx.globalAlpha = c.alpha;
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, c.r, c.r*0.6, 0, 0, 2*Math.PI);
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = '#fff';
+    ctx.shadowBlur = 30;
+    ctx.fill();
+    ctx.restore();
+    c.x += c.dx;
+    if (c.x > bgCanvas.width + c.r) c.x = -c.r;
+  }
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+// Анимация баланса
+function animateBalance(oldVal, newVal) {
+  const el = balanceEl;
+  el.classList.add('balance-anim');
+  let start = null;
+  const duration = 600;
+  function step(ts) {
+    if (!start) start = ts;
+    let progress = Math.min((ts - start) / duration, 1);
+    let val = Math.round(oldVal + (newVal - oldVal) * progress);
+    el.textContent = val;
+    if (progress < 1) requestAnimationFrame(step);
+    else el.classList.remove('balance-anim');
+  }
+  requestAnimationFrame(step);
+}
+
+// Вспышка выигрыша
+function flashWin() {
+  winEl.parentElement.classList.add('flash-win');
+  setTimeout(()=>winEl.parentElement.classList.remove('flash-win'), 700);
+}
+
+// Стили для анимации баланса и выигрыша
+const style = document.createElement('style');
+style.innerHTML = `
+  .balance-anim { filter: drop-shadow(0 0 8px #ff0) brightness(1.2); transition: filter 0.3s; }
+  .flash-win { animation: flashWin 0.7s; }
+  @keyframes flashWin { 0%{background:#fff70044;} 100%{background:transparent;} }
+`;
+document.head.appendChild(style);
+const SYMBOLS = ["🍌","🍇","🍉","🍑","🍎","🍬","🍫","❤️"];
+const PAYOUTS = {
+  '🍌': {8: 0.25, 10: 0.75, 12: 2},
+  '🍇': {8: 0.4, 10: 0.9, 12: 4},
+  '🍉': {8: 0.5, 10: 1, 12: 5},
+  '🍑': {8: 0.8, 10: 1.2, 12: 8},
+  '🍎': {8: 1, 10: 1.5, 12: 10},
+  '🍬': {8: 1.5, 10: 2, 12: 12},
+  '🍫': {8: 2.5, 10: 10, 12: 25},
+  '❤️': {8: 10, 10: 25, 12: 50}
+};
+const SCATTER = '🍭';
+const SCATTER_PAYOUTS = {4: 3, 5: 5, 6: 100};
+const MULT = '💣';
+const ROWS = 5, COLS = 6;
+const MAX_CASCADES = 20;
+
+const grid = document.getElementById('grid');
+const balanceEl = document.getElementById('playerBalance');
+const fsEl = document.getElementById('fsCount');
+const anteEl = document.getElementById('anteStatus');
+const message = document.getElementById('message');
+const winEl = document.getElementById('currentWin');
+const spinSound = document.getElementById('spinSound');
+const winSound = document.getElementById('winSound');
+const bigWinSound = document.getElementById('bigWinSound');
+
+let balance = 1000;
+let bet = 10;
+let freeSpins = 0;
+let anteOn = false;
+let autoSpin = false;
+let isSpinning = false;
+let autoSpinInterval;
+let spinTotalWin = 0;
+let turboMode = false;
+let soundOn = true;
+
+const autoSpinIndicator = document.getElementById('autoSpinIndicator');
+
+let cells = [];
+for (let r = 0; r < ROWS; r++) {
+  cells[r] = [];
+  for (let c = 0; c < COLS; c++) {
+    const div = document.createElement('div');
+    div.className = 'cell';
+    grid.appendChild(div);
+    cells[r][c] = div;
+  }
+}
+
+function showPaytable() {
+  document.getElementById('paytableModal').style.display = 'block';
+}
+function closePaytable() {
+  document.getElementById('paytableModal').style.display = 'none';
+}
+function showSettings() {
+  document.getElementById('settingsModal').style.display = 'block';
+}
+function closeSettings() {
+  document.getElementById('settingsModal').style.display = 'none';
+  soundOn = document.getElementById('soundToggle').checked;
+  turboMode = document.getElementById('turboToggle').checked;
+}
+
+function playSound(sound) {
+  if (soundOn) {
+    sound.currentTime = 0;
+    sound.play();
+  }
+}
+
+function createParticles(cell, color) {
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = Math.random() * 2 * Math.PI;
+    const dist = Math.random() * 60 + 40;
+    p.style.setProperty('--dx', `${Math.cos(angle) * dist}px`);
+    p.style.setProperty('--dy', `${Math.sin(angle) * dist}px`);
+    p.style.background = color || `hsl(${Math.random() * 360}, 80%, 60%)`;
+    p.style.left = cell.getBoundingClientRect().left + cell.offsetWidth / 2 + 'px';
+    p.style.top = cell.getBoundingClientRect().top + cell.offsetHeight / 2 + 'px';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1000);
+  }
+}
+
+function createCandyRain() {
+  for (let i = 0; i < 50; i++) {
+    const c = document.createElement('div');
+    c.className = 'particle';
+    c.style.left = Math.random() * window.innerWidth + 'px';
+    c.style.top = '-20px';
+    c.style.background = `hsl(${Math.random() * 360}, 80%, 70%)`;
+    c.style.setProperty('--dx', '0px');
+    c.style.setProperty('--dy', `${window.innerHeight + 20}px`);
+    c.style.animationDuration = `${1 + Math.random() * 2}s`;
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 3000);
+  }
+}
+
+function toggleAnte() {
+  anteOn = !anteOn;
+  anteEl.textContent = `Ante: ${anteOn ? 'On (+25%)' : 'Off'}`;
+  message.textContent = `Ante Bet ${anteOn ? 'enabled' : 'disabled'}`;
+}
+
+function buyBonus() {
+  const cost = bet * 100;
+  if (balance < cost || isSpinning) {
+    message.textContent = "Недостаточно монет или спин в процессе!";
+    return;
+  }
+  balance -= cost;
+  balanceEl.textContent = balance;
+  freeSpins = 10;
+  fsEl.textContent = freeSpins;
+  message.textContent = "Бонус куплен! 10 Free Spins 🎉";
+  playSound(bigWinSound);
+  spin(true);
+}
+
+function toggleAutoSpin() {
+  autoSpin = !autoSpin;
+  autoSpinIndicator.style.display = autoSpin ? 'block' : 'none';
+  if (autoSpin) {
+    message.textContent = "Автоспин включён";
+    autoSpinInterval = setInterval(() => {
+      if (!isSpinning && freeSpins === 0) spin(false);
+    }, turboMode ? 1000 : 2000);
+  } else {
+    message.textContent = "Автоспин выключен";
+    clearInterval(autoSpinInterval);
+  }
+}
+
+function changeBet() {
+  bet = parseInt(document.getElementById('betSelect').value);
+  message.textContent = `Ставка: ${bet} монет`;
+  if (autoSpin) toggleAutoSpin(); // Отключаем автоспин при смене ставки
+}
+
+function getSymbol(isFree = false, isAnte = false) {
+  const scatterProb = 0.005 * (isAnte ? 2 : 1);
+  if (Math.random() < scatterProb) return {symbol: SCATTER, multiplier: null};
+  if (isFree) {
+    const multProb = 0.03;
+    if (Math.random() < multProb) {
+      const val = Math.floor(2 + Math.random() * 99);
+      return {symbol: MULT, multiplier: val};
+    }
+  }
+  const sym = SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+  return {symbol: sym, multiplier: null};
+}
+
+function spin(isFree = false) {
+  if (isSpinning) return;
+  isSpinning = true;
+  playSound(spinSound);
+  createCandyRain();
+
+  spinTotalWin = 0;
+  winEl.textContent = spinTotalWin;
+
+  let effectiveBet = bet * (anteOn ? 1.25 : 1);
+
+  if (isFree) {
+    freeSpins--;
+    fsEl.textContent = freeSpins;
+    message.textContent = "Free Spin!";
+  } else {
+    if (balance < effectiveBet) {
+      message.textContent = "Недостаточно монет!";
+      isSpinning = false;
+      return;
+    }
+    const oldBal = balance;
+    balance -= effectiveBet;
+    animateBalance(oldBal, balance);
+    message.textContent = "Вращаем...";
+  }
+
+  let field = [];
+  for (let r = 0; r < ROWS; r++) {
+    field[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      cells[r][c].textContent = '';
+      cells[r][c].classList.remove('win', 'appear', 'reel-spin');
+      cells[r][c].style.transform = 'translateY(-200px) rotateX(90deg) scale(0.5)';
+      field[r][c] = getSymbol(isFree, anteOn);
+    }
+  }
+
+  // 3D Reel Animation: animate each column as a reel
+  for (let c = 0; c < COLS; c++) {
+    setTimeout(() => {
+      for (let r = 0; r < ROWS; r++) {
+        const div = cells[r][c];
+        div.classList.add('reel-spin');
+        setTimeout(() => div.classList.remove('reel-spin'), 1100);
+      }
+    }, c * 90);
+  }
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const div = cells[r][c];
+      const {symbol, multiplier} = field[r][c];
+      setTimeout(() => {
+        div.textContent = symbol + (multiplier ? 'x' + multiplier : '');
+        div.style.transform = 'translateY(0) rotateX(0) scale(1)';
+        div.classList.add('appear');
+      }, r * (turboMode ? 50 : 100) + c * (turboMode ? 25 : 50));
+    }
+  }
+
+  setTimeout(() => cascade(field, isFree, 0), turboMode ? 400 : 800);
+}
+
+function cascade(field, isFree, cascadeCount) {
+  if (cascadeCount > MAX_CASCADES) {
+    message.textContent = "Максимальное количество каскадов достигнуто! Завершение спина.";
+    isSpinning = false;
+    if (freeSpins > 0) {
+      setTimeout(() => spin(true), turboMode ? 500 : 1000);
+    } else if (autoSpin) {
+      setTimeout(() => spin(false), turboMode ? 500 : 1000);
+    }
+    return;
+  }
+
+  let counts = {};
+  let positions = {};
+  let multPositions = [];
+  let totalWin = 0;
+  let winCells = [];
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const {symbol, multiplier} = field[r][c];
+      if (symbol === MULT) {
+        multPositions.push([r, c]);
+        continue;
+      }
+      counts[symbol] = (counts[symbol] || 0) + 1;
+      if (!positions[symbol]) positions[symbol] = [];
+      positions[symbol].push([r, c]);
+    }
+  }
+
+  // Regular wins
+  for (let sym in counts) {
+    if (!PAYOUTS[sym]) continue;
+    const count = counts[sym];
+    if (count < 8) continue;
+    const tier = count >= 12 ? 12 : count >= 10 ? 10 : 8;
+    totalWin += PAYOUTS[sym][tier] * bet;
+    positions[sym].forEach(([r, c]) => {
+      winCells.push([r, c]);
+      cells[r][c].classList.add('win');
+      createParticles(cells[r][c], '#ffd700');
+    });
+  }
+
+  // Scatters
+  const scatterCount = counts[SCATTER] || 0;
+  const minScatters = isFree ? 3 : 4;
+  let scatterWin = 0;
+  if (scatterCount >= minScatters) {
+    scatterWin = SCATTER_PAYOUTS[Math.min(scatterCount, 6)] || SCATTER_PAYOUTS[6];
+    totalWin += scatterWin * bet;
+    positions[SCATTER].forEach(([r, c]) => {
+      winCells.push([r, c]);
+      cells[r][c].classList.add('win');
+      createParticles(cells[r][c], '#00ffff');
+    });
+    const addedSpins = isFree ? 5 : 10;
+    freeSpins += addedSpins;
+    fsEl.textContent = freeSpins;
+    message.textContent = `Scatter Win! +${addedSpins} Free Spins 🎁`;
+    playSound(bigWinSound);
+  } else {
+    // If scatters don't trigger, don't remove them
+    winCells = winCells.filter(([r, c]) => field[r][c].symbol !== SCATTER);
+  }
+
+  // Multipliers in free spins
+  let multTotal = 1;
+  if (isFree && totalWin > 0) {
+    multTotal = 0;
+    multPositions.forEach(([r, c]) => {
+      multTotal += field[r][c].multiplier;
+      winCells.push([r, c]);
+      cells[r][c].classList.add('win');
+      createParticles(cells[r][c], '#ff00ff');
+    });
+    if (multTotal > 0) totalWin *= multTotal;
+  }
+
+  if (totalWin > 0) {
+    spinTotalWin += totalWin;
+    const oldBal = balance;
+    balance += totalWin;
+    animateBalance(oldBal, balance);
+    winEl.textContent = spinTotalWin;
+    if (totalWin >= bet * 15) {
+      showBigWin(totalWin);
+      document.getElementById('grid').classList.add('shake');
+      setTimeout(()=>document.getElementById('grid').classList.remove('shake'), 800);
+    }
+    message.textContent = `Вы выиграли ${totalWin} монет! ${multTotal > 1 ? `x${multTotal} Multiplier!` : ''} 🎉`;
+    playSound(winSound);
+    flashWin();
+    setTimeout(() => {
+      // Remove wins and tumble
+      winCells.forEach(([r, c]) => {
+        cells[r][c].classList.add('remove');
+        setTimeout(() => {
+          field[r][c] = null;
+          cells[r][c].classList.remove('remove');
+        }, 500);
+      });
+
+      setTimeout(() => {
+        for (let c = 0; c < COLS; c++) {
+          let writeRow = ROWS - 1;
+          for (let r = ROWS - 1; r >= 0; r--) {
+            if (field[r][c] !== null) {
+              field[writeRow][c] = field[r][c];
+              if (writeRow !== r) {
+                cells[writeRow][c].textContent = '';
+                cells[writeRow][c].classList.remove('win');
+                cells[writeRow][c].style.transform = 'translateY(-200px) rotateX(90deg) scale(0.5)';
+              }
+              writeRow--;
+            }
+          }
+          for (let r = writeRow; r >= 0; r--) {
+            field[r][c] = getSymbol(isFree, anteOn);
+          }
+        }
+
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            const div = cells[r][c];
+            const {symbol, multiplier} = field[r][c];
+            setTimeout(() => {
+              div.textContent = symbol + (multiplier ? 'x' + multiplier : '');
+              div.style.transform = 'translateY(0) rotateX(0) scale(1)';
+              div.classList.add('appear');
+            }, r * (turboMode ? 40 : 80) + c * (turboMode ? 20 : 40));
+          }
+        }
+
+        setTimeout(() => cascade(field, isFree, cascadeCount + 1), turboMode ? 300 : 600);
+      }, 500);
+    }, turboMode ? 400 : 800);
+  } else {
+    message.textContent = isFree ? "Free Spin ended!" : "Попробуйте снова!";
+    isSpinning = false;
+    if (freeSpins > 0) {
+      setTimeout(() => spin(true), turboMode ? 500 : 1000);
+    } else if (autoSpin) {
+      setTimeout(() => spin(false), turboMode ? 500 : 1000);е
+    }
+  }
+}
+</script>
+
+</body>
+</html>
