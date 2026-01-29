@@ -9,11 +9,11 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8190845573:AAFp73ddi3qRBZhOAOfMkJlxpDKehVErG_o")
 
 # Backend API
-API_URL = os.getenv("API_URL", "http://localhost:8000")
+API_URL = os.getenv("API_URL", "https://sqwoz-api.onrender.com")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "sqwoz2024")
 
 # WebApp URLs
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-app.vercel.app")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://sqwozn9k-banword-bot-lilyakaaas-projects.vercel.app")
 
 # Чат для уведомлений (можно изменить через /setchat)
 TARGET_CHAT_ID = int(os.getenv("TARGET_CHAT_ID", "0"))
