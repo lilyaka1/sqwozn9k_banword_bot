@@ -1,0 +1,20 @@
+# render.yaml - Render Blueprint
+
+services:
+  - type: web
+    name: sqwoz-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        value: sqwoz2024
+      - key: STARTING_BALANCE
+        value: 1000
+      - key: PYTHON_VERSION
+        value: 3.11.0
