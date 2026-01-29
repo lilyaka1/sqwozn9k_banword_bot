@@ -18,19 +18,19 @@ import aiohttp
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import (
-    ApplicationBuilder, 
-    MessageHandler, 
-    CommandHandler, 
+    ApplicationBuilder,
+    MessageHandler,
+    CommandHandler,
     CallbackQueryHandler,
-    filters, 
+    filters,
     ContextTypes,
     JobQueue
 )
 
 from config import (
-    BOT_TOKEN, 
-    API_URL, 
-    ADMIN_PASSWORD, 
+    BOT_TOKEN,
+    API_URL,
+    ADMIN_PASSWORD,
     WEBAPP_URL,
     ADMIN_IDS,
     BASE_BUYOUT_PRICE
@@ -47,6 +47,80 @@ BAN_DURATION = {
     2: 2,    # x2 = 2 часа (лотерея)
     4: 8,    # x4 = 8 часов (еженедельное/личное слово)
 }
+
+
+async def main():
+    """Основная функция запуска бота"""
+    print("[🚀] Запуск SQWOZ Banword Bot...")
+
+    # Проверяем токен
+    if not BOT_TOKEN:
+        print("[❌] BOT_TOKEN не найден!")
+        return
+
+    print(f"[✅] API_URL: {API_URL}")
+    print(f"[✅] WEBAPP_URL: {WEBAPP_URL}")
+
+    # Создаем приложение
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    # Загружаем фильтры
+    await ban_checker.load_global_words()
+    await ban_checker.load_weekly_words()
+
+    # Регистрируем хендлеры
+    register_handlers(application)
+
+    print("[🎯] Бот запущен! Ожидание сообщений...")
+
+    # Запуск с graceful shutdown
+    try:
+        await application.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True
+        )
+    except KeyboardInterrupt:
+        print("[🛑] Бот остановлен пользователем")
+    except Exception as e:
+        print(f"[❌] Ошибка запуска бота: {e}")
+    finally:
+        await application.shutdown()
+
+
+def register_handlers(application):
+    """Регистрация всех хендлеров бота"""
+    # Команды пользователя
+    application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(CommandHandler("profile", cmd_profile))
+    application.add_handler(CommandHandler("banwords", cmd_banwords))
+    application.add_handler(CommandHandler("addword", cmd_addword))
+    application.add_handler(CommandHandler("delword", cmd_delword))
+    application.add_handler(CommandHandler("buyout", cmd_buyout))
+    application.add_handler(CommandHandler("lottery", cmd_lottery))
+    application.add_handler(CommandHandler("games", cmd_games))
+    
+    # Команды админа
+    application.add_handler(CommandHandler("reload", cmd_reload))
+    application.add_handler(CommandHandler("admin", cmd_admin))
+    application.add_handler(CommandHandler("ban", cmd_ban))
+    application.add_handler(CommandHandler("unban", cmd_unban))
+    application.add_handler(CommandHandler("setchat", cmd_setchat))
+    application.add_handler(CommandHandler("weeklyword", cmd_weeklyword))
+    application.add_handler(CommandHandler("startlottery", cmd_startlottery))
+    
+    # Callback кнопки
+    application.add_handler(CallbackQueryHandler(handle_callback))
+    
+    # Обработчик сообщений
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # Startup/shutdown
+    application.post_init = on_startup
+    application.post_shutdown = on_shutdown
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 # Еженедельные слова для лотереи (можно расширить или брать из БД)
 WEEKLY_WORD_POOL = [
@@ -723,44 +797,5 @@ async def on_shutdown(app):
 
 # ==================== MAIN ====================
 
-def main():
-    """Запуск бота"""
-    print("[>] Бот запускается...")
-    
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    
-    # Команды пользователя
-    app.add_handler(CommandHandler("start", cmd_start))
-    app.add_handler(CommandHandler("profile", cmd_profile))
-    app.add_handler(CommandHandler("banwords", cmd_banwords))
-    app.add_handler(CommandHandler("addword", cmd_addword))
-    app.add_handler(CommandHandler("delword", cmd_delword))
-    app.add_handler(CommandHandler("buyout", cmd_buyout))
-    app.add_handler(CommandHandler("lottery", cmd_lottery))
-    app.add_handler(CommandHandler("games", cmd_games))
-    
-    # Команды админа
-    app.add_handler(CommandHandler("reload", cmd_reload))
-    app.add_handler(CommandHandler("admin", cmd_admin))
-    app.add_handler(CommandHandler("ban", cmd_ban))
-    app.add_handler(CommandHandler("unban", cmd_unban))
-    app.add_handler(CommandHandler("setchat", cmd_setchat))
-    app.add_handler(CommandHandler("weeklyword", cmd_weeklyword))
-    app.add_handler(CommandHandler("startlottery", cmd_startlottery))
-    
-    # Callback кнопки
-    app.add_handler(CallbackQueryHandler(handle_callback))
-    
-    # Обработчик сообщений
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # Startup/shutdown
-    app.post_init = on_startup
-    app.post_shutdown = on_shutdown
-    
-    print("[✓] Хендлеры добавлены, запуск polling...")
-    app.run_polling()
-
-
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
