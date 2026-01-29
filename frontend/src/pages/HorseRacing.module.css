@@ -1,0 +1,730 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+/* Header */
+.header {
+  padding: 16px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+}
+
+.headerTitle {
+  font-size: 24px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+/* Back Button */
+.backBtn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  z-index: 100;
+}
+
+.backBtn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* Bet Panel */
+.betPanel {
+  background: #2d2a3e;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.betTitle {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.betGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.betOption {
+  background: #3a3650;
+  padding: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 3px solid transparent;
+  min-height: 85px;
+}
+
+.betOption:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+}
+
+.betOptionSelected {
+  border-color: #3b82f6;
+  background: #1e3a8a;
+  box-shadow: 0 0 20px rgba(59,130,246,0.5);
+}
+
+.roverColor {
+  width: 100%;
+  height: 10px;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+
+.roverName {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.roverCoef {
+  opacity: 0.8;
+  font-size: 13px;
+}
+
+/* Bet Amount */
+.betAmount {
+  margin-top: 16px;
+}
+
+.betLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+.betControls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.betPreset {
+  flex: 1;
+  padding: 12px 8px;
+  border-radius: 6px;
+  background: #3a3650;
+  border: 2px solid transparent;
+  cursor: pointer;
+  text-align: center;
+  font-weight: 600;
+  transition: all 0.2s;
+  font-size: 15px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.betPreset:hover {
+  background: #4a4660;
+  transform: translateY(-2px);
+}
+
+.betPresetActive {
+  border-color: #3b82f6;
+  background: #1e3a8a;
+  box-shadow: 0 0 15px rgba(59,130,246,0.4);
+}
+
+.allIn {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 700;
+}
+
+.allIn:hover {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 0 20px rgba(220,38,38,0.5);
+}
+
+.betInput {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  border: 2px solid #3a3650;
+  background: #1a1825;
+  color: #fff;
+  font-size: 18px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.betInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 15px rgba(59,130,246,0.3);
+}
+
+/* Express */
+.expressToggle {
+  margin-top: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #78350f, #92400e);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 3px solid transparent;
+  font-weight: 900;
+  font-size: 15px;
+  color: #fff;
+  box-shadow: 0 0 20px rgba(245,158,11,0.3);
+  width: 100%;
+}
+
+.expressToggle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(245,158,11,0.5);
+}
+
+.expressToggleActive {
+  border-color: #f59e0b;
+  box-shadow: 0 0 40px rgba(245,158,11,0.7);
+}
+
+.fire {
+  font-size: 22px;
+  animation: fireFlicker 1s infinite;
+}
+
+@keyframes fireFlicker {
+  0%, 100% { transform: scale(1) rotate(-5deg); opacity: 1; }
+  50% { transform: scale(1.1) rotate(5deg); opacity: 0.8; }
+}
+
+.expressModes {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.expressMode {
+  padding: 12px 8px;
+  background: #3a3650;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+  text-align: center;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.expressMode:hover {
+  background: #4a4660;
+  transform: translateY(-2px);
+}
+
+.expressModeActive {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #78350f, #92400e);
+  box-shadow: 0 0 20px rgba(245,158,11,0.5);
+}
+
+.expressModeTitle {
+  font-weight: 900;
+  font-size: 11px;
+  margin-bottom: 6px;
+  color: #f59e0b;
+  line-height: 1.2;
+}
+
+.expressModeCoef {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.expressModeDesc {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+/* Place Selector */
+.placeSelector {
+  margin-top: 12px;
+}
+
+.placeSelectorTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  opacity: 0.9;
+}
+
+.placesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.placeBtn {
+  padding: 8px;
+  background: #3a3650;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.placeBtn:hover {
+  background: #4a4660;
+  transform: scale(1.05);
+}
+
+.placeBtnSelected {
+  border-color: #3b82f6;
+  background: #1e3a8a;
+}
+
+.placeBtnDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.placeMedal {
+  font-size: 16px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.placeLabel {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* Express Info */
+.expressInfo {
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(245,158,11,0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(245,158,11,0.3);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.expressInfoHighlight {
+  color: #f59e0b;
+  font-weight: 700;
+}
+
+/* Start Button */
+.startBtn {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: none;
+  padding: 16px 28px;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  width: 100%;
+  margin-top: 16px;
+  box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+}
+
+.startBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59,130,246,0.6);
+}
+
+.startBtn:active {
+  transform: scale(0.98);
+}
+
+.startBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Track */
+.trackWrap {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  position: relative;
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 50%, #1a4d2e 100%);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 0 60px rgba(0,0,0,0.8);
+  border: 4px solid #1e1e1e;
+}
+
+.lane {
+  position: absolute;
+  width: 100%;
+  height: 25%;
+  left: 0;
+  border-bottom: 3px dashed rgba(255,255,255,0.2);
+  background: repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(255,255,255,0.03) 30px, rgba(255,255,255,0.03) 60px);
+}
+
+.lane1 { top: 0; border-color: rgba(93,173,226,0.4); }
+.lane2 { top: 25%; border-color: rgba(251,191,36,0.4); }
+.lane3 { top: 50%; border-color: rgba(16,185,129,0.4); }
+.lane4 { top: 75%; border-color: rgba(168,85,247,0.4); border-bottom: none; }
+
+.laneNumber {
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  font-size: 42px;
+  font-weight: 900;
+  z-index: 100;
+  line-height: 1;
+}
+
+.laneNumber1 { color: #5dade2; text-shadow: 0 0 30px rgba(93,173,226,0.8), 0 4px 10px rgba(0,0,0,0.9); }
+.laneNumber2 { color: #fbbf24; text-shadow: 0 0 30px rgba(251,191,36,0.8), 0 4px 10px rgba(0,0,0,0.9); }
+.laneNumber3 { color: #10b981; text-shadow: 0 0 30px rgba(16,185,129,0.8), 0 4px 10px rgba(0,0,0,0.9); }
+.laneNumber4 { color: #a855f7; text-shadow: 0 0 30px rgba(168,85,247,0.8), 0 4px 10px rgba(0,0,0,0.9); }
+
+.finishLine {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  background: repeating-linear-gradient(0deg, #000 0px, #000 20px, #fff 20px, #fff 40px);
+  opacity: 0.9;
+  z-index: 2;
+  box-shadow: 0 0 30px rgba(251,191,36,0.8);
+}
+
+.startLine {
+  position: absolute;
+  left: 60px;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  background: #fbbf24;
+  opacity: 0.9;
+  z-index: 3;
+  box-shadow: 0 0 25px rgba(251,191,36,0.9);
+}
+
+.rover {
+  position: absolute;
+  left: 70px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.5);
+  width: 120px;
+  height: 120px;
+  z-index: 10;
+  transition: left 0.03s linear;
+  overflow: hidden;
+}
+
+.roverRunning {
+  animation: roverRide 0.3s infinite;
+}
+
+.roverRunning img {
+  filter: drop-shadow(0 0 12px rgba(255,255,255,0.6));
+}
+
+@keyframes roverRide {
+  0% { transform: translateY(-50%) scale(0.5) translateX(0) rotate(0deg); }
+  25% { transform: translateY(-50%) scale(0.5) translateX(-1px) rotate(-1deg); }
+  50% { transform: translateY(-50%) scale(0.5) translateX(1px) rotate(1deg); }
+  75% { transform: translateY(-50%) scale(0.5) translateX(-1px) rotate(-1deg); }
+  100% { transform: translateY(-50%) scale(0.5) translateX(0) rotate(0deg); }
+}
+
+.roverImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Countdown */
+.countdown {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 120px;
+  font-weight: 900;
+  color: #fbbf24;
+  text-shadow: 0 0 20px rgba(251,191,36,1), 0 0 40px rgba(251,191,36,0.8);
+  z-index: 100;
+  animation: countdownPulse 1s ease-out;
+}
+
+@keyframes countdownPulse {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+
+/* Results */
+.results {
+  background: #2d2a3e;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.winMessage {
+  text-align: center;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.winMessageWon {
+  color: #3b82f6;
+  text-shadow: 0 0 10px rgba(59,130,246,0.5);
+}
+
+.winMessageLost {
+  color: #ef4444;
+  text-shadow: 0 0 10px rgba(239,68,68,0.5);
+}
+
+.resultItem {
+  background: #3a3650;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.resultItemWinner {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  animation: winPulse 0.6s ease-out;
+}
+
+@keyframes winPulse {
+  0% { transform: scale(0.95); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.resultMedal {
+  font-size: 24px;
+}
+
+.resultName {
+  flex: 1;
+  font-weight: 600;
+}
+
+.resultEmoji {
+  font-size: 24px;
+}
+
+/* Bankrupt Modal */
+.bankruptOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.bankruptContent {
+  background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+  padding: 32px;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 400px;
+  border: 3px solid #ef4444;
+  box-shadow: 0 0 40px rgba(239,68,68,0.5), 0 8px 32px rgba(0,0,0,0.8);
+  animation: bankruptShake 0.6s ease-out;
+}
+
+@keyframes bankruptShake {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  10% { transform: scale(0.95) rotate(-2deg); }
+  20% { transform: scale(1.05) rotate(2deg); }
+  30% { transform: scale(0.98) rotate(-1deg); }
+  40% { transform: scale(1.02) rotate(1deg); }
+  50% { transform: scale(1); }
+}
+
+.bankruptEmoji {
+  font-size: 80px;
+  margin-bottom: 16px;
+  animation: bankruptFloat 2s ease-in-out infinite;
+}
+
+@keyframes bankruptFloat {
+  0%, 100% { transform: translateY(0px) rotate(-5deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+}
+
+.bankruptTitle {
+  font-size: 32px;
+  font-weight: 900;
+  color: #ef4444;
+  margin-bottom: 16px;
+  text-shadow: 0 0 20px rgba(239,68,68,0.8);
+}
+
+.bankruptMessage {
+  font-size: 18px;
+  color: #d1d5db;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.bankruptActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.bankruptBtn {
+  padding: 14px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.bankruptBtnRestart {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+}
+
+.bankruptBtnRestart:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16,185,129,0.4);
+}
+
+.bankruptBtnQuit {
+  background: #3a3650;
+  color: #fff;
+}
+
+.bankruptBtnQuit:hover {
+  background: #4a4660;
+  transform: translateY(-2px);
+}
+
+/* Rules Button */
+.rulesBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50px;
+  padding: 10px 16px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.3s ease;
+}
+
+.rulesBtn:hover {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.05);
+}
+
+/* Rules Content */
+.rulesTitle {
+  font-size: 24px;
+  color: #fbbf24;
+  margin-bottom: 16px;
+}
+
+.rulesContent {
+  text-align: left;
+  font-size: 14px;
+  color: #d1d5db;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.rulesContent p {
+  margin-bottom: 10px;
+}
+
+.rulesContent ul {
+  margin: 8px 0 12px 20px;
+  padding: 0;
+}
+
+.rulesContent li {
+  margin-bottom: 4px;
+}

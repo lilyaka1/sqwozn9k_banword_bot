@@ -1,0 +1,366 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 16px;
+  background: radial-gradient(ellipse at center, #2a1f4e 0%, #1a1230 100%);
+}
+
+.backBtn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  z-index: 100;
+}
+
+.header {
+  text-align: center;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 36px;
+  background: linear-gradient(135deg, #ffd700, #ff69b4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(255,215,0,0.3);
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Stats Bar */
+.statsBar {
+  display: flex;
+  justify-content: space-around;
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
+.statItem {
+  text-align: center;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+
+.statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffd700;
+}
+
+/* Slot Machine */
+.slotMachine {
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+  border-radius: 24px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 2px solid rgba(255,215,0,0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 0 60px rgba(255,215,0,0.05);
+}
+
+.reels {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.reel {
+  width: 80px;
+  height: 100px;
+  background: linear-gradient(135deg, #1a1230, #2a1f4e);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  box-shadow: inset 0 4px 12px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,215,0,0.2);
+  overflow: hidden;
+  position: relative;
+}
+
+.reelSpinning {
+  animation: spinReel 0.1s linear infinite;
+}
+
+@keyframes spinReel {
+  0% { transform: translateY(-10px); }
+  100% { transform: translateY(10px); }
+}
+
+.reelWin {
+  animation: winGlow 0.5s ease-in-out infinite alternate;
+  box-shadow: inset 0 4px 12px rgba(0,0,0,0.5), 0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.4);
+}
+
+@keyframes winGlow {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+/* Win Line */
+.winLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, #ffd700, transparent);
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  animation: winLineFlash 0.3s ease-in-out 3;
+}
+
+@keyframes winLineFlash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* Controls */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.betControls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.betLabel {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.betBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: 2px solid rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.betBtn:hover {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.1);
+}
+
+.betAmount {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffd700;
+  min-width: 80px;
+  text-align: center;
+}
+
+.spinBtn {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  border: none;
+  padding: 20px 40px;
+  border-radius: 50px;
+  color: #1a1230;
+  font-size: 24px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(255,215,0,0.4);
+  text-transform: uppercase;
+}
+
+.spinBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255,215,0,0.6);
+}
+
+.spinBtn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.spinBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Win Message */
+.winMessage {
+  text-align: center;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255,215,0,0.2), rgba(255,140,0,0.1));
+  border-radius: 16px;
+  border: 2px solid rgba(255,215,0,0.3);
+  margin-bottom: 16px;
+  animation: winPulse 0.5s ease-out;
+}
+
+@keyframes winPulse {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.winText {
+  font-size: 24px;
+  color: #ffd700;
+  font-weight: 700;
+}
+
+.winAmount {
+  font-size: 36px;
+  color: #fff;
+  font-weight: 900;
+  text-shadow: 0 0 20px rgba(255,215,0,0.5);
+}
+
+/* Paytable */
+.paytable {
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+.paytableTitle {
+  font-size: 16px;
+  color: #9ca3af;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.paytableRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.paytableRow:nth-child(even) {
+  background: rgba(255,255,255,0.03);
+}
+
+.paytableSymbols {
+  font-size: 20px;
+}
+
+.paytableMultiplier {
+  color: #ffd700;
+  font-weight: 600;
+}
+
+/* Rules Button */
+.rulesBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50px;
+  padding: 10px 16px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.3s ease;
+}
+
+.rulesBtn:hover {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.05);
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modalContent {
+  background: linear-gradient(135deg, #2a1f4e, #1a1230);
+  padding: 28px;
+  border-radius: 20px;
+  text-align: center;
+  border: 2px solid rgba(255,215,0,0.3);
+  max-width: 340px;
+  width: 100%;
+}
+
+.modalTitle {
+  font-size: 24px;
+  color: #ffd700;
+  margin-bottom: 16px;
+}
+
+.modalBtn {
+  background: linear-gradient(135deg, #ffd700, #ff69b4);
+  border: none;
+  padding: 14px 32px;
+  border-radius: 50px;
+  color: #1a1230;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modalBtn:hover {
+  transform: translateY(-2px);
+}
+
+/* Rules Content */
+.rulesContent {
+  text-align: left;
+  font-size: 14px;
+  color: #d1d5db;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.rulesContent p {
+  margin-bottom: 10px;
+}
+
+.rulesContent ul {
+  margin: 8px 0 12px 20px;
+  padding: 0;
+}
+
+.rulesContent li {
+  margin-bottom: 4px;
+}

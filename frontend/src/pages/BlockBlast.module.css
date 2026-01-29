@@ -1,0 +1,326 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 12px;
+}
+
+.backBtn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  z-index: 100;
+}
+
+.header {
+  padding: 16px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-radius: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+}
+
+.headerTitle {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.stats {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+/* Grid */
+.gridWrap {
+  background: #2d2a3e;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  margin-bottom: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  aspect-ratio: 1;
+}
+
+.cell {
+  background: #3a3650;
+  border-radius: 4px;
+  position: relative;
+  transition: background 0.08s ease, box-shadow 0.08s ease;
+}
+
+.cellFilled {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  box-shadow: 0 2px 8px rgba(139,92,246,0.4);
+}
+
+.cellPreview {
+  background: rgba(34,197,94,0.4) !important;
+  box-shadow: 0 0 12px rgba(34,197,94,0.3);
+  outline: 2px solid #22c55e;
+  outline-offset: -2px;
+  animation: previewPulse 0.8s ease-in-out infinite;
+}
+
+.cellInvalid {
+  background: rgba(239,68,68,0.4) !important;
+  box-shadow: 0 0 12px rgba(239,68,68,0.3) !important;
+  outline: 2px solid #ef4444 !important;
+}
+
+.cellClearing {
+  animation: clearPulse 0.35s cubic-bezier(0.68,-0.55,0.265,1.55);
+  background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+}
+
+@keyframes clearPulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 1; filter: brightness(2); }
+  100% { transform: scale(0.1); opacity: 0; }
+}
+
+@keyframes previewPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* Pieces */
+.piecesWrap {
+  background: #2d2a3e;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  min-height: 120px;
+}
+
+.pieces {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  justify-items: center;
+  align-items: center;
+}
+
+.pieceSlot {
+  min-width: 100px;
+  min-height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.piece {
+  cursor: grab;
+  padding: 8px;
+  background: #3a3650;
+  border-radius: 8px;
+  transition: transform 0.3s, box-shadow 0.2s;
+  touch-action: none;
+  animation: pieceAppear 0.4s cubic-bezier(0.68,-0.55,0.265,1.55) forwards;
+}
+
+.piece:active {
+  cursor: grabbing;
+}
+
+.pieceDragging {
+  transform: scale(1.15);
+  box-shadow: 0 12px 32px rgba(139,92,246,0.6);
+  z-index: 1000;
+  opacity: 0.8;
+}
+
+.pieceUsed {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pieceGrid {
+  display: grid;
+  gap: 2px;
+}
+
+.pieceCell {
+  width: 28px;
+  height: 28px;
+  background: #8b5cf6;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.pieceCellEmpty {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+}
+
+@keyframes pieceAppear {
+  0% { opacity: 0; transform: translateY(40px) scale(0.5); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Combo Indicator */
+.comboIndicator {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 72px;
+  font-weight: 900;
+  color: #fbbf24;
+  text-shadow: 0 0 20px rgba(251,191,36,1), 0 0 40px rgba(251,191,36,0.8);
+  pointer-events: none;
+  z-index: 1001;
+  animation: comboAnim 1.3s ease-out forwards;
+}
+
+@keyframes comboAnim {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(2) translateY(-50px); }
+}
+
+/* Game Over Modal */
+.gameOverOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal {
+  background: #2d2a3e;
+  padding: 32px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  max-width: 320px;
+}
+
+.modalTitle {
+  font-size: 32px;
+  margin-bottom: 16px;
+  color: #fbbf24;
+}
+
+.modalText {
+  font-size: 18px;
+  margin-bottom: 24px;
+  color: #d1d5db;
+}
+
+.btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: none;
+  padding: 14px 28px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(99,102,241,0.4);
+}
+
+/* Dragging piece - follows cursor */
+.draggingPiece {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -50%) scale(1.1);
+  opacity: 0.9;
+  filter: drop-shadow(0 8px 16px rgba(99,102,241,0.6));
+}
+
+/* Balance earned */
+.balanceEarned {
+  font-size: 24px;
+  font-weight: 700;
+  color: #34d399;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  background: rgba(52, 211, 153, 0.15);
+  border-radius: 12px;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+/* Rules Button */
+.rulesBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50px;
+  padding: 10px 16px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.3s ease;
+}
+
+.rulesBtn:hover {
+  background: rgba(255,255,255,0.2);
+  transform: scale(1.05);
+}
+
+/* Rules Content */
+.rulesContent {
+  text-align: left;
+  font-size: 14px;
+  color: #d1d5db;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.rulesContent p {
+  margin-bottom: 10px;
+}
+
+.rulesContent ul {
+  margin: 8px 0 12px 20px;
+  padding: 0;
+}
+
+.rulesContent li {
+  margin-bottom: 4px;
+}
