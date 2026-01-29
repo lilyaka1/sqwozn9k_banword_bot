@@ -14,6 +14,8 @@ from app.schemas import (
     PlayerResponse,
     WeeklyBanwordCreate,
     WeeklyBanwordResponse,
+    LotteryWordCreate,
+    LotteryWordResponse,
     GlobalBanwordCreate,
     GlobalBanwordResponse,
 )
@@ -27,6 +29,11 @@ from app.crud import (
     get_active_weekly_banwords,
     create_weekly_banword,
     deactivate_weekly_banword,
+    get_lottery_word_pool,
+    add_lottery_word,
+    remove_lottery_word,
+    get_random_lottery_word,
+    bulk_add_lottery_words,
     get_all_global_banwords,
     create_global_banword,
     delete_global_banword,
@@ -157,6 +164,71 @@ async def remove_weekly_banword(
             detail="Банворд не найден"
         )
     return {"success": True}
+
+
+# === Lottery Word Pool ===
+
+@router.get("/lottery-words", response_model=List[LotteryWordResponse])
+async def get_lottery_words(
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_admin_token)
+):
+    """Получить все слова из пула лотереи"""
+    words = await get_lottery_word_pool(db)
+    return [LotteryWordResponse.model_validate(word) for word in words]
+
+
+@router.post("/lottery-words", response_model=LotteryWordResponse)
+async def create_lottery_word(
+    word_data: LotteryWordCreate,
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_admin_token)
+):
+    """Добавить слово в пул лотереи"""
+    word = await add_lottery_word(db, word_data.word)
+    return LotteryWordResponse.model_validate(word)
+
+
+@router.post("/lottery-words/bulk")
+async def bulk_create_lottery_words(
+    words: List[str],
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_admin_token)
+):
+    """Массово добавить слова в пул лотереи"""
+    added_count = await bulk_add_lottery_words(db, words)
+    return {"added": added_count, "total_requested": len(words)}
+
+
+@router.delete("/lottery-words/{word_id}")
+async def delete_lottery_word(
+    word_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_admin_token)
+):
+    """Удалить слово из пула лотереи"""
+    success = await remove_lottery_word(db, word_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Слово не найдено"
+        )
+    return {"success": True}
+
+
+@router.get("/lottery-words/random")
+async def get_random_word(
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(verify_admin_token)
+):
+    """Получить случайное слово из пула лотереи"""
+    word = await get_random_lottery_word(db)
+    if not word:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пул слов пуст"
+        )
+    return {"word": word}
 
 
 # === Global Banwords ===

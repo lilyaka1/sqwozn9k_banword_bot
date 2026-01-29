@@ -141,6 +141,19 @@ class ChatSettings(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
+class LotteryWordPool(Base):
+    """Пул слов для еженедельной лотереи"""
+    __tablename__ = "lottery_word_pool"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    word = Column(String(100), nullable=False, unique=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Статистика использования
+    times_used = Column(Integer, default=0)  # Сколько раз было выбрано для лотереи
+
+
 # Длительность бана в часах по множителю
 BAN_DURATION_HOURS = {
     1: 1,    # x1 = 1 час

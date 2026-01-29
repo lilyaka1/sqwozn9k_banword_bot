@@ -107,6 +107,7 @@ def register_handlers(application):
     application.add_handler(CommandHandler("setchat", cmd_setchat))
     application.add_handler(CommandHandler("weeklyword", cmd_weeklyword))
     application.add_handler(CommandHandler("startlottery", cmd_startlottery))
+    application.add_handler(CommandHandler("filllottery", cmd_filllottery))
     
     # Callback кнопки
     application.add_handler(CallbackQueryHandler(handle_callback))
@@ -122,12 +123,12 @@ def register_handlers(application):
 if __name__ == "__main__":
     asyncio.run(main())
 
-# Еженедельные слова для лотереи (можно расширить или брать из БД)
-WEEKLY_WORD_POOL = [
-    "дно", "зашквар", "кринж", "душнила", "токсик", 
-    "флекс", "рофл", "имба", "нуб", "изи",
-    "хайп", "вайб", "чилл", "краш", "рандом"
-]
+# Еженедельные слова для лотереи (теперь берутся из БД)
+# WEEKLY_WORD_POOL = [
+#     "дно", "зашквар", "кринж", "душнила", "токсик", 
+#     "флекс", "рофл", "имба", "нуб", "изи",
+#     "хайп", "вайб", "чилл", "краш", "рандом"
+# ]
 
 
 # ==================== API HELPERS ====================
@@ -171,6 +172,11 @@ async def get_player_ban(telegram_id: int):
 async def buyout_ban(telegram_id: int):
     """Выкупить бан"""
     return await api_request("POST", f"/players/{telegram_id}/ban/buyout")
+
+
+async def get_random_lottery_word():
+    """Получить случайное слово из пула лотереи"""
+    return await api_request("GET", "/admin/lottery-words/random", admin=True)
 
 
 # ==================== NOTIFICATIONS ====================
@@ -246,8 +252,13 @@ async def job_weekly_lottery(context: ContextTypes.DEFAULT_TYPE):
     """Еженедельная лотерея - выбор нового слова недели"""
     print("[JOB] Запуск еженедельной лотереи...")
     
-    # Выбираем случайное слово
-    new_word = random.choice(WEEKLY_WORD_POOL)
+    # Получаем случайное слово из базы данных
+    word_data = await get_random_lottery_word()
+    if not word_data or not word_data.get("word"):
+        print("[JOB] Ошибка: пул слов лотереи пуст!")
+        return
+    
+    new_word = word_data["word"]
     week_number = datetime.now().isocalendar()[1]
     
     # Сохраняем в API
@@ -538,6 +549,34 @@ async def cmd_unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"✅ Пользователь {target_id} разбанен.")
     else:
         await update.message.reply_text("❌ Ошибка разбана.")
+
+
+async def cmd_filllottery(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /filllottery - заполнить пул слов лотереи (только админы)"""
+    user = update.effective_user
+    
+    if user.id not in ADMIN_IDS:
+        await update.message.reply_text("❌ Только для админов.")
+        return
+    
+    # Старый пул слов
+    old_pool = [
+        "дно", "зашквар", "кринж", "душнила", "токсик", 
+        "флекс", "рофл", "имба", "нуб", "изи",
+        "хайп", "вайб", "чилл", "краш", "рандом"
+    ]
+    
+    result = await api_request("POST", "/admin/lottery-words/bulk", old_pool, admin=True)
+    
+    if result:
+        added = result.get("added", 0)
+        total = result.get("total_requested", 0)
+        await update.message.reply_text(
+            f"✅ Пул слов лотереи заполнен!\n"
+            f"Добавлено: {added}/{total} слов"
+        )
+    else:
+        await update.message.reply_text("❌ Ошибка заполнения пула слов.")
 
 
 # ==================== CALLBACK HANDLERS ====================

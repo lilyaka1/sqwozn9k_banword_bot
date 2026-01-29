@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from app.models import (
     Player, BanHistory, GameSession, WeeklyBanword, 
-    GlobalSettings, GlobalBanword, ChatSettings, BAN_DURATION_HOURS
+    GlobalSettings, GlobalBanword, ChatSettings, LotteryWordPool, BAN_DURATION_HOURS
 )
 from app.schemas import PlayerCreate, GameSessionCreate, BanReason
 from app.config import settings
@@ -336,6 +336,80 @@ async def deactivate_weekly_banword(db: AsyncSession, banword_id: int) -> bool:
         await db.commit()
         return True
     return False
+
+
+# === Lottery Word Pool CRUD ===
+
+async def get_lottery_word_pool(db: AsyncSession) -> List[LotteryWordPool]:
+    """Получить все слова из пула лотереи"""
+    result = await db.execute(
+        select(LotteryWordPool).where(LotteryWordPool.is_active == True)
+    )
+    return result.scalars().all()
+
+
+async def add_lottery_word(db: AsyncSession, word: str) -> LotteryWordPool:
+    """Добавить слово в пул лотереи"""
+    word_obj = LotteryWordPool(word=word.lower().strip())
+    db.add(word_obj)
+    await db.commit()
+    await db.refresh(word_obj)
+    return word_obj
+
+
+async def remove_lottery_word(db: AsyncSession, word_id: int) -> bool:
+    """Удалить слово из пула лотереи"""
+    result = await db.execute(
+        select(LotteryWordPool).where(LotteryWordPool.id == word_id)
+    )
+    word_obj = result.scalar_one_or_none()
+    if word_obj:
+        word_obj.is_active = False
+        await db.commit()
+        return True
+    return False
+
+
+async def get_random_lottery_word(db: AsyncSession) -> Optional[str]:
+    """Получить случайное слово из пула лотереи"""
+    result = await db.execute(
+        select(LotteryWordPool).where(LotteryWordPool.is_active == True)
+    )
+    words = result.scalars().all()
+    
+    if not words:
+        return None
+    
+    # Выбираем случайное слово
+    import random
+    selected_word = random.choice(words)
+    
+    # Увеличиваем счетчик использования
+    selected_word.times_used += 1
+    await db.commit()
+    
+    return selected_word.word
+
+
+async def bulk_add_lottery_words(db: AsyncSession, words: List[str]) -> int:
+    """Массово добавить слова в пул лотереи"""
+    added_count = 0
+    for word in words:
+        word_clean = word.lower().strip()
+        if word_clean:
+            # Проверяем, не существует ли уже
+            result = await db.execute(
+                select(LotteryWordPool).where(
+                    LotteryWordPool.word == word_clean,
+                    LotteryWordPool.is_active == True
+                )
+            )
+            existing = result.scalar_one_or_none()
+            if not existing:
+                await add_lottery_word(db, word_clean)
+                added_count += 1
+    
+    return added_count
 
 
 # === Stats ===

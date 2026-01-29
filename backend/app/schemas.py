@@ -174,6 +174,21 @@ class WeeklyBanwordResponse(BaseModel):
         from_attributes = True
 
 
+class LotteryWordCreate(BaseModel):
+    word: str
+
+
+class LotteryWordResponse(BaseModel):
+    id: int
+    word: str
+    is_active: bool
+    times_used: int = 0
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
 class GlobalBanwordCreate(BaseModel):
     word: str
 
