@@ -140,12 +140,20 @@
   align-items: center;
 }
 
+.pieceSlotEmpty {
+  width: 100px;
+  height: 100px;
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .piece {
   cursor: grab;
   padding: 8px;
   background: #3a3650;
   border-radius: 8px;
-  transition: transform 0.3s, box-shadow 0.2s;
+  transition: transform 0.3s, box-shadow 0.2s, opacity 0.3s;
   touch-action: none;
   animation: pieceAppear 0.4s cubic-bezier(0.68,-0.55,0.265,1.55) forwards;
 }

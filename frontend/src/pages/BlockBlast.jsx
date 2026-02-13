@@ -86,7 +86,7 @@ function BlockBlast() {
   }
 
   // Адаптивный выбор плитки в зависимости от заполненности поля
-  const pickAdaptivePiece = (currentGrid) => {
+  const pickAdaptivePiece = (currentGrid, usedIds = []) => {
     const freeCells = countFreeCells(currentGrid)
     const fillPercent = 1 - (freeCells / (GRID_SIZE * GRID_SIZE))
     
@@ -95,36 +95,49 @@ function BlockBlast() {
     
     if (fillPercent > 0.7) {
       // Очень мало места (>70% заполнено) — в основном мелкие
-      if (rand < 0.5) pool = TINY_PIECES
-      else if (rand < 0.85) pool = SMALL_PIECES
+      if (rand < 0.6) pool = TINY_PIECES
+      else if (rand < 0.9) pool = SMALL_PIECES
       else pool = MEDIUM_PIECES
     } else if (fillPercent > 0.5) {
       // Среднее заполнение (50-70%) — баланс в сторону мелких
-      if (rand < 0.2) pool = TINY_PIECES
-      else if (rand < 0.6) pool = SMALL_PIECES
+      if (rand < 0.3) pool = TINY_PIECES
+      else if (rand < 0.7) pool = SMALL_PIECES
       else pool = MEDIUM_PIECES
     } else if (fillPercent > 0.3) {
       // Мало заполнено (30-50%) — обычный баланс
-      if (rand < 0.1) pool = TINY_PIECES
-      else if (rand < 0.4) pool = SMALL_PIECES
+      if (rand < 0.15) pool = TINY_PIECES
+      else if (rand < 0.5) pool = SMALL_PIECES
       else pool = MEDIUM_PIECES
     } else {
       // Почти пусто (<30%) — больше средних для challenge
-      if (rand < 0.05) pool = TINY_PIECES
-      else if (rand < 0.25) pool = SMALL_PIECES
+      if (rand < 0.1) pool = TINY_PIECES
+      else if (rand < 0.35) pool = SMALL_PIECES
       else pool = MEDIUM_PIECES
     }
     
-    return pool[Math.floor(Math.random() * pool.length)]
+    // Исключаем уже использованные плитки
+    const availablePieces = pool.filter(p => !usedIds.includes(p.id))
+    
+    if (availablePieces.length === 0) {
+      // Если все плитки в пуле использованы, берём случайную
+      return pool[Math.floor(Math.random() * pool.length)]
+    }
+    
+    return availablePieces[Math.floor(Math.random() * availablePieces.length)]
   }
 
   // Spawn new pieces с адаптивным алгоритмом
   const spawnPieces = useCallback(() => {
     const newPieces = []
+    const usedIds = []
+    
+    // Генерируем 3 разные плитки
     for (let i = 0; i < 3; i++) {
-      const piece = pickAdaptivePiece(grid)
-      newPieces.push({ ...piece, used: false, key: Date.now() + i })
+      const piece = pickAdaptivePiece(grid, usedIds)
+      usedIds.push(piece.id)
+      newPieces.push({ ...piece, used: false, key: Date.now() + Math.random() })
     }
+    
     setPieces(newPieces)
   }, [grid])
 
@@ -231,13 +244,13 @@ function BlockBlast() {
     let newCombo = combo
 
     if (linesCleared > 0) {
-      newCombo++
-      newScore += linesCleared * 100 * newCombo
-      setShowCombo(linesCleared)
+      newCombo += linesCleared  // Комбо увеличивается на количество очищенных линий
+      newScore += linesCleared * 100 * (combo + 1)  // Используем текущее комбо
+      setShowCombo(newCombo)
       setTimeout(() => setShowCombo(null), 1300)
       if (navigator.vibrate) navigator.vibrate([50, 30, 50])
     } else {
-      newCombo = 0
+      newCombo = 0  // Сбрасываем комбо если нет очищенных линий
     }
 
     setScore(newScore)
@@ -425,13 +438,14 @@ function BlockBlast() {
         <div className={styles.pieces}>
           {pieces.map((piece, index) => (
             <div key={piece.key} className={styles.pieceSlot}>
-              {!piece.used && (
+              {!piece.used ? (
                 <div
                   className={styles.piece}
                   onPointerDown={(e) => handlePiecePointerDown(e, index)}
                   style={{ 
                     animationDelay: `${index * 0.1}s`,
-                    opacity: draggingIndex === index ? 0.3 : 1
+                    opacity: draggingIndex === index ? 0.3 : 1,
+                    transform: draggingIndex === index ? 'scale(0.9)' : 'scale(1)'
                   }}
                 >
                   <div
@@ -446,6 +460,9 @@ function BlockBlast() {
                     ))}
                   </div>
                 </div>
+              ) : (
+                // Использованная плитка - показываем пустой слот
+                <div className={styles.pieceSlotEmpty} />
               )}
             </div>
           ))}

@@ -68,23 +68,19 @@ async def main():
     await ban_checker.load_global_words()
     await ban_checker.load_weekly_words()
 
-    # Регистрируем хендлеры
-    register_handlers(application)
-
     print("[🎯] Бот запущен! Ожидание сообщений...")
 
     # Запуск с graceful shutdown
     try:
         await application.run_polling(
             allowed_updates=Update.ALL_TYPES,
-            drop_pending_updates=True
+            drop_pending_updates=False,
+            close_loop=False
         )
     except KeyboardInterrupt:
         print("[🛑] Бот остановлен пользователем")
-    except Exception as e:
-        print(f"[❌] Ошибка запуска бота: {e}")
     finally:
-        await application.shutdown()
+        print("[✅] Бот корректно завершил работу")
 
 
 def register_handlers(application):
