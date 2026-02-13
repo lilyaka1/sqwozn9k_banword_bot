@@ -127,13 +127,13 @@ function BlockBlast() {
   }
 
   // Spawn new pieces с адаптивным алгоритмом
-  const spawnPieces = useCallback(() => {
+  const spawnPieces = useCallback((gridToUse = grid) => {
     const newPieces = []
     const usedIds = []
     
     // Генерируем 3 разные плитки
     for (let i = 0; i < 3; i++) {
-      const piece = pickAdaptivePiece(grid, usedIds)
+      const piece = pickAdaptivePiece(gridToUse, usedIds)
       usedIds.push(piece.id)
       newPieces.push({ ...piece, used: false, key: Date.now() + Math.random() })
     }
@@ -257,22 +257,24 @@ function BlockBlast() {
     setCombo(newCombo)
     setGrid(clearedGrid)
 
-    // Mark piece as used
+    // Mark piece as used and immediately replace it
     const newPieces = pieces.map((p, i) => 
-      i === pieceIndex ? { ...p, used: true } : p
+      i === pieceIndex ? null : p
     )
+    
+    // Если плитка использована, сразу генерируем новую на её место
+    const usedIds = newPieces
+      .filter(p => p !== null)
+      .map(p => p.id)
+    const newPiece = pickAdaptivePiece(clearedGrid, usedIds)
+    newPieces[pieceIndex] = { ...newPiece, used: false, key: Date.now() + Math.random() }
+    
     setPieces(newPieces)
 
-    // Проверяем нужно ли обновить плитки - ТОЛЬКО когда ВСЕ 3 использованы
-    const allUsed = newPieces.every(p => p.used)
-    
-    // Check game over с учётом оставшихся плиток
+    // Check game over только если нет доступных плиток
     setTimeout(() => {
-      if (allUsed) {
-        // Все плитки использованы - генерируем новые
-        spawnPieces()
-      } else if (checkGameOver(clearedGrid, newPieces)) {
-        // Ещё есть плитки, но они не помещаются
+      const hasValidPiece = newPieces.some(p => p && canPlace(p, 0, 0, clearedGrid))
+      if (!hasValidPiece) {
         setGameOver(true)
       }
     }, 100)
@@ -437,8 +439,8 @@ function BlockBlast() {
       <div className={styles.piecesWrap}>
         <div className={styles.pieces}>
           {pieces.map((piece, index) => (
-            <div key={piece.key} className={styles.pieceSlot}>
-              {!piece.used ? (
+            <div key={piece?.key || `empty-${index}`} className={styles.pieceSlot}>
+              {piece ? (
                 <div
                   className={styles.piece}
                   onPointerDown={(e) => handlePiecePointerDown(e, index)}
@@ -461,8 +463,8 @@ function BlockBlast() {
                   </div>
                 </div>
               ) : (
-                // Использованная плитка - показываем пустой слот
-                <div className={styles.pieceSlotEmpty} />
+                // Генерируется новая плитка
+                <div className={styles.pieceSlotLoading} />
               )}
             </div>
           ))}
